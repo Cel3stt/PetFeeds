@@ -52,12 +52,7 @@ export function Sidebar({ currentPath, navigateTo }: SidebarProps) {
           ))}
         </nav>
       </div>
-      <div className="p-4 border-t border-gray-100">
-        <Button variant="outline" className="w-full flex items-center gap-2 text-gray-700 py-5" onClick={() => {}}>
-          <MessageSquareText className="h-4 w-4" />
-          <span>Contact Support</span>
-        </Button>
-      </div>
+      
     </div>
   )
 }

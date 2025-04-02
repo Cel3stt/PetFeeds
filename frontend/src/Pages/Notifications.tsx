@@ -1,0 +1,680 @@
+"use client"
+
+import { useState } from "react"
+import { Layout } from "@/components/layout"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AlertCircle, Bell, Check, Download, Info, Mail, MessageSquare, Phone, Search, Trash2 } from "lucide-react"
+
+// Sample notification data
+const notificationsData = [
+  {
+    id: 1,
+    message: "Food level is below 20%. Consider refilling soon.",
+    timestamp: "2025-04-03T14:30:22",
+    read: false,
+    type: "warning",
+    channel: "in-app",
+  },
+  {
+    id: 2,
+    message: "Scheduled feeding completed successfully.",
+    timestamp: "2025-04-03T12:15:05",
+    read: true,
+    type: "info",
+    channel: "in-app",
+  },
+  {
+    id: 3,
+    message: "Camera disconnected unexpectedly.",
+    timestamp: "2025-04-03T09:45:18",
+    read: false,
+    type: "critical",
+    channel: "sms",
+  },
+  {
+    id: 4,
+    message: "Motion detected near the feeder.",
+    timestamp: "2025-04-02T19:20:33",
+    read: true,
+    type: "info",
+    channel: "in-app",
+  },
+  {
+    id: 5,
+    message: "Scheduled feeding missed due to low food level.",
+    timestamp: "2025-04-02T18:00:00",
+    read: false,
+    type: "critical",
+    channel: "email",
+  },
+  {
+    id: 6,
+    message: "Weekly feeding report is now available.",
+    timestamp: "2025-04-02T09:00:00",
+    read: true,
+    type: "info",
+    channel: "email",
+  },
+  {
+    id: 7,
+    message: "Firmware update available for your feeder.",
+    timestamp: "2025-04-01T15:45:00",
+    read: false,
+    type: "info",
+    channel: "in-app",
+  },
+  {
+    id: 8,
+    message: "Battery level is low on your feeder device.",
+    timestamp: "2025-04-01T10:30:00",
+    read: true,
+    type: "warning",
+    channel: "sms",
+  },
+  {
+    id: 9,
+    message: "Your pet has been fed 3 times today.",
+    timestamp: "2025-03-31T20:15:00",
+    read: true,
+    type: "info",
+    channel: "in-app",
+  },
+  {
+    id: 10,
+    message: "Unusual activity detected - multiple feeding attempts.",
+    timestamp: "2025-03-31T14:20:00",
+    read: false,
+    type: "warning",
+    channel: "sms",
+  },
+  {
+    id: 11,
+    message: "Monthly usage statistics are ready to view.",
+    timestamp: "2025-03-30T09:00:00",
+    read: true,
+    type: "info",
+    channel: "email",
+  },
+  {
+    id: 12,
+    message: "Feeder has been inactive for 24 hours.",
+    timestamp: "2025-03-29T18:30:00",
+    read: false,
+    type: "warning",
+    channel: "in-app",
+  },
+]
+
+// Critical alerts
+const criticalAlerts = [
+  {
+    id: 1,
+    title: "Low Food Level",
+    message: "Food is below 20% capacity.",
+    action: "Check Feeder",
+    icon: AlertCircle,
+    color: "text-orange-500",
+    bgColor: "bg-orange-100",
+  },
+  {
+    id: 2,
+    title: "Camera Disconnected",
+    message: "Live feed unavailable.",
+    action: "Reconnect",
+    icon: AlertCircle,
+    color: "text-red-500",
+    bgColor: "bg-red-100",
+  },
+]
+
+export default function NotificationsPage({ navigateTo }: { navigateTo: (path: string) => void }) {
+  const [notifications, setNotifications] = useState(notificationsData)
+  const [filterType, setFilterType] = useState("all")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [dateRange, setDateRange] = useState("all")
+
+  // Notification preferences
+  const [smsAlerts, setSmsAlerts] = useState(true)
+  const [emailNotifications, setEmailNotifications] = useState(true)
+  const [inAppNotifications, setInAppNotifications] = useState(true)
+  const [motionDetectionAlerts, setMotionDetectionAlerts] = useState(true)
+  const [lowFoodLevelAlerts, setLowFoodLevelAlerts] = useState(true)
+  const [feedingFailureAlerts, setFeedingFailureAlerts] = useState(true)
+
+  // Filter notifications based on current filters
+  const filteredNotifications = notifications.filter((notification) => {
+    // Filter by type
+    if (filterType !== "all" && notification.channel !== filterType) {
+      return false
+    }
+
+    // Filter by search query
+    if (searchQuery && !notification.message.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false
+    }
+
+    // Filter by date range
+    if (dateRange !== "all") {
+      const notificationDate = new Date(notification.timestamp)
+      const today = new Date()
+
+      if (dateRange === "today") {
+        return notificationDate.toDateString() === today.toDateString()
+      } else if (dateRange === "week") {
+        const weekAgo = new Date()
+        weekAgo.setDate(today.getDate() - 7)
+        return notificationDate >= weekAgo
+      } else if (dateRange === "month") {
+        const monthAgo = new Date()
+        monthAgo.setMonth(today.getMonth() - 1)
+        return notificationDate >= monthAgo
+      }
+    }
+
+    return true
+  })
+
+  const unreadCount = notifications.filter((n) => !n.read).length
+  const todayCount = notifications.filter((n) => {
+    const notificationDate = new Date(n.timestamp)
+    const today = new Date()
+    return notificationDate.toDateString() === today.toDateString()
+  }).length
+
+  const handleMarkAsRead = (id: number) => {
+    setNotifications(notifications.map((n) => (n.id === id ? { ...n, read: true } : n)))
+  }
+
+  const handleMarkAllAsRead = () => {
+    setNotifications(notifications.map((n) => ({ ...n, read: true })))
+  }
+
+  const handleDeleteNotification = (id: number) => {
+    setNotifications(notifications.filter((n) => n.id !== id))
+  }
+
+  const handleClearAllNotifications = () => {
+    if (confirm("Are you sure you want to delete all notifications?")) {
+      setNotifications([])
+    }
+  }
+
+  const handleSavePreferences = () => {
+    alert("Notification preferences saved!")
+  }
+
+  const handleExportHistory = () => {
+    alert("Notification history exported!")
+  }
+
+  return (
+    <Layout currentPath="/notifications" navigateTo={navigateTo} title="Notifications">
+      <div className="mb-4">
+        <p className="text-gray-600">Stay updated with your pet feeder's activities and alerts.</p>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Left Column */}
+        <div className="space-y-6 md:col-span-1">
+          {/* Notification Summary Section */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl font-bold">Notification Overview</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Total Notifications Today</span>
+                <Badge className="bg-blue-100 text-blue-600 border-blue-200">{todayCount}</Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Unread Notifications</span>
+                <Badge className="bg-orange-100 text-orange-500 border-orange-200">{unreadCount}</Badge>
+              </div>
+              <div className="space-y-2">
+                <span className="text-sm text-gray-600">Most Recent Alert</span>
+                {notifications.length > 0 && (
+                  <div className="p-3 bg-gray-50 rounded-md">
+                    <p className="text-sm font-medium">{notifications[0].message}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(notifications[0].timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+            <CardFooter className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={handleMarkAllAsRead}
+                disabled={unreadCount === 0}
+              >
+                <Check className="h-4 w-4 mr-2" />
+                Mark All Read
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                onClick={handleClearAllNotifications}
+                disabled={notifications.length === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear All
+              </Button>
+            </CardFooter>
+          </Card>
+
+          {/* Notification Settings Section */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl font-bold">Notification Preferences</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium">Notification Channels</h3>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-500" />
+                    <Label htmlFor="sms-alerts" className="text-sm">
+                      SMS Alerts
+                    </Label>
+                  </div>
+                  <Switch id="sms-alerts" checked={smsAlerts} onCheckedChange={setSmsAlerts} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-gray-500" />
+                    <Label htmlFor="email-notifications" className="text-sm">
+                      Email Notifications
+                    </Label>
+                  </div>
+                  <Switch
+                    id="email-notifications"
+                    checked={emailNotifications}
+                    onCheckedChange={setEmailNotifications}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-gray-500" />
+                    <Label htmlFor="in-app-notifications" className="text-sm">
+                      In-App Notifications
+                    </Label>
+                  </div>
+                  <Switch
+                    id="in-app-notifications"
+                    checked={inAppNotifications}
+                    onCheckedChange={setInAppNotifications}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-2">
+                <h3 className="text-sm font-medium">Alert Types</h3>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="motion-detection-alerts" className="text-sm">
+                    Motion Detection Alerts
+                  </Label>
+                  <Switch
+                    id="motion-detection-alerts"
+                    checked={motionDetectionAlerts}
+                    onCheckedChange={setMotionDetectionAlerts}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="low-food-level-alerts" className="text-sm">
+                    Low Food Level Alerts
+                  </Label>
+                  <Switch
+                    id="low-food-level-alerts"
+                    checked={lowFoodLevelAlerts}
+                    onCheckedChange={setLowFoodLevelAlerts}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="feeding-failure-alerts" className="text-sm">
+                    Feeding Failure Alerts
+                  </Label>
+                  <Switch
+                    id="feeding-failure-alerts"
+                    checked={feedingFailureAlerts}
+                    onCheckedChange={setFeedingFailureAlerts}
+                  />
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white" onClick={handleSavePreferences}>
+                Save Preferences
+              </Button>
+            </CardFooter>
+          </Card>
+
+          {/* Troubleshooting Tips Section */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl font-bold">Notification Issues?</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-3">
+                <Info className="h-5 w-5 text-orange-500 shrink-0" />
+                <p className="text-sm">Not receiving alerts? Check your notification settings.</p>
+              </div>
+              <div className="flex gap-3">
+                <Info className="h-5 w-5 text-orange-500 shrink-0" />
+                <p className="text-sm">SMS not working? Verify your phone number.</p>
+              </div>
+              <div className="flex gap-3">
+                <Info className="h-5 w-5 text-orange-500 shrink-0" />
+                <p className="text-sm">Email notifications in spam? Add our address to your contacts.</p>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button variant="link" className="text-orange-500 w-full">
+                Visit the Help Center for more support
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-6 md:col-span-2">
+          {/* Recent Notifications List */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl font-bold">Recent Notifications</CardTitle>
+              <CardDescription>Filter and search your notifications</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    placeholder="Search notifications..."
+                    className="pl-9"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="w-full md:w-[180px]">
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="sms">SMS</SelectItem>
+                    <SelectItem value="email">Email</SelectItem>
+                    <SelectItem value="in-app">In-App</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={dateRange} onValueChange={setDateRange}>
+                  <SelectTrigger className="w-full md:w-[180px]">
+                    <SelectValue placeholder="Date range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Time</SelectItem>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="week">Last 7 Days</SelectItem>
+                    <SelectItem value="month">Last 30 Days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {filteredNotifications.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">No notifications found</div>
+                ) : (
+                  filteredNotifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-4 border rounded-lg ${notification.read ? "bg-white" : "bg-orange-50"}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5">
+                          {notification.channel === "sms" ? (
+                            <Phone className="h-5 w-5 text-blue-500" />
+                          ) : notification.channel === "email" ? (
+                            <Mail className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <Bell className="h-5 w-5 text-orange-500" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className={`text-sm ${notification.read ? "text-gray-600" : "font-medium text-gray-900"}`}>
+                            {notification.message}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-500">
+                              {new Date(notification.timestamp).toLocaleString()}
+                            </span>
+                            <Badge
+                              className={
+                                notification.type === "critical"
+                                  ? "bg-red-100 text-red-600 border-red-200"
+                                  : notification.type === "warning"
+                                    ? "bg-yellow-100 text-yellow-600 border-yellow-200"
+                                    : "bg-blue-100 text-blue-600 border-blue-200"
+                              }
+                            >
+                              {notification.type === "critical"
+                                ? "Critical"
+                                : notification.type === "warning"
+                                  ? "Warning"
+                                  : "Info"}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleMarkAsRead(notification.id)}
+                            disabled={notification.read}
+                          >
+                            <Check className="h-4 w-4" />
+                            <span className="sr-only">Mark as read</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-500"
+                            onClick={() => handleDeleteNotification(notification.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete</span>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button variant="outline" size="sm" className="w-full">
+                Load More
+              </Button>
+            </CardFooter>
+          </Card>
+
+          {/* Critical Alerts Section */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl font-bold">Critical Alerts</CardTitle>
+              <CardDescription>Issues that require your immediate attention</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {criticalAlerts.map((alert) => (
+                  <div key={alert.id} className={`p-4 rounded-lg ${alert.bgColor} border border-${alert.color}/20`}>
+                    <div className="flex items-start gap-3">
+                      <alert.icon className={`h-5 w-5 ${alert.color} shrink-0`} />
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium">{alert.title}</h4>
+                        <p className="text-sm text-gray-600 mt-1">{alert.message}</p>
+                      </div>
+                      <Button size="sm" className="bg-orange-500 hover:bg-orange-600 text-white">
+                        {alert.action}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Notification History Section */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl font-bold">Notification History</CardTitle>
+              <CardDescription>Complete record of all notifications</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="all">
+                <TabsList className="mb-4">
+                  <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="critical">Critical</TabsTrigger>
+                  <TabsTrigger value="warning">Warning</TabsTrigger>
+                  <TabsTrigger value="info">Info</TabsTrigger>
+                </TabsList>
+                <TabsContent value="all" className="m-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Channel</TableHead>
+                        <TableHead>Message</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {notifications.map((notification) => (
+                        <TableRow key={notification.id}>
+                          <TableCell>{new Date(notification.timestamp).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <Badge
+                              className={
+                                notification.type === "critical"
+                                  ? "bg-red-100 text-red-600 border-red-200"
+                                  : notification.type === "warning"
+                                    ? "bg-yellow-100 text-yellow-600 border-yellow-200"
+                                    : "bg-blue-100 text-blue-600 border-blue-200"
+                              }
+                            >
+                              {notification.type === "critical"
+                                ? "Critical"
+                                : notification.type === "warning"
+                                  ? "Warning"
+                                  : "Info"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="capitalize">{notification.channel}</TableCell>
+                          <TableCell className="max-w-[300px] truncate">{notification.message}</TableCell>
+                          <TableCell>{notification.read ? "Read" : "Unread"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+                <TabsContent value="critical" className="m-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Channel</TableHead>
+                        <TableHead>Message</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {notifications
+                        .filter((n) => n.type === "critical")
+                        .map((notification) => (
+                          <TableRow key={notification.id}>
+                            <TableCell>{new Date(notification.timestamp).toLocaleDateString()}</TableCell>
+                            <TableCell className="capitalize">{notification.channel}</TableCell>
+                            <TableCell className="max-w-[300px] truncate">{notification.message}</TableCell>
+                            <TableCell>{notification.read ? "Read" : "Unread"}</TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+                <TabsContent value="warning" className="m-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Channel</TableHead>
+                        <TableHead>Message</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {notifications
+                        .filter((n) => n.type === "warning")
+                        .map((notification) => (
+                          <TableRow key={notification.id}>
+                            <TableCell>{new Date(notification.timestamp).toLocaleDateString()}</TableCell>
+                            <TableCell className="capitalize">{notification.channel}</TableCell>
+                            <TableCell className="max-w-[300px] truncate">{notification.message}</TableCell>
+                            <TableCell>{notification.read ? "Read" : "Unread"}</TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+                <TabsContent value="info" className="m-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Channel</TableHead>
+                        <TableHead>Message</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {notifications
+                        .filter((n) => n.type === "info")
+                        .map((notification) => (
+                          <TableRow key={notification.id}>
+                            <TableCell>{new Date(notification.timestamp).toLocaleDateString()}</TableCell>
+                            <TableCell className="capitalize">{notification.channel}</TableCell>
+                            <TableCell className="max-w-[300px] truncate">{notification.message}</TableCell>
+                            <TableCell>{notification.read ? "Read" : "Unread"}</TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" size="sm" onClick={handleExportHistory}>
+                <Download className="h-4 w-4 mr-2" />
+                Export History
+              </Button>
+              <Button variant="outline" size="sm">
+                View All
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    </Layout>
+  )
+}
+
