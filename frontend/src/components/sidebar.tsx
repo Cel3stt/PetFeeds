@@ -25,7 +25,7 @@ export function Sidebar({ currentPath, navigateTo }: SidebarProps) {
             <rect width="32" height="32" rx="8" fill="#FF7A5A" />
             <path d="M10 16H14M18 16H22M16 10V14M16 18V22" stroke="white" strokeWidth="2" strokeLinecap="round" />
           </svg>
-          <span className="text-xl font-bold text-gray-800">Petfeeds</span>
+          <span className="text-xl font-bold text-orange-500">Petfeeds</span>
         </div>
       </div>
       <div className="flex-1 py-6">
