@@ -44,7 +44,6 @@ const cameraActivities = [
   { id: 2, time: "2025-04-03 12:15:05", type: "Motion Detected", details: "Pet activity detected near feeder" },
   { id: 3, time: "2025-04-03 09:45:18", type: "Snapshot Taken", details: "Manual snapshot at 9:45 AM" },
   { id: 4, time: "2025-04-02 19:20:33", type: "Motion Detected", details: "Pet activity detected near feeder" },
-  { id: 5, time: "2025-04-02 15:10:47", type: "Recording Started", details: "Manual recording for 2 minutes" },
 ]
 
 export default function CameraPage({ navigateTo }: { navigateTo: (path: string) => void }) {

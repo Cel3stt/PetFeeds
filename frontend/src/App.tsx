@@ -6,6 +6,7 @@ import Schedule from "@/pages/schedule"
 import CameraPage from "@/pages/camera"
 import NotificationsPage from "./Pages/Notifications"
 import SettingsPage from "./Pages/Settings"
+import { Toaster } from "react-hot-toast";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState("/")
@@ -16,6 +17,7 @@ export default function App() {
 
   return (
     <>
+    <Toaster position="top-right"/>
       {currentPage === "/" && <Dashboard navigateTo={navigateTo} />}
       {currentPage === "/schedule" && <Schedule navigateTo={navigateTo} />}
       {currentPage === "/camera" && <CameraPage navigateTo={navigateTo} />}

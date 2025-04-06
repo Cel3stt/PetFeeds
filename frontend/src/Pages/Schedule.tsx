@@ -1,12 +1,12 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Info, Plus, Trash2, Settings } from "lucide-react"
-import { Layout } from "@/components/layout"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
+import { useState, useEffect } from "react";
+import { Info, Plus, Trash2, Settings, CalendarX } from "lucide-react";
+import { Layout } from "@/components/layout";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -15,31 +15,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-
-// Sample data for scheduled feedings
-const scheduleData = [
-  { id: 1, time: "06:00 AM", portion: "100g", frequency: "Daily", status: "Active" },
-  { id: 2, time: "12:30 PM", portion: "120g", frequency: "Daily", status: "Active" },
-  { id: 3, time: "06:00 PM", portion: "100g", frequency: "Daily", status: "Active" },
-  { id: 4, time: "10:00 PM", portion: "50g", frequency: "Mon, Wed, Fri", status: "Paused" },
-  { id: 5, time: "02:00 PM", portion: "75g", frequency: "Weekends", status: "Active" },
-]
-
-// Sample data for recent automated feeds
-const recentFeeds = [
-  { id: 1, date: "2025-04-03", time: "06:00 AM", portion: "100g", status: "Successful" },
-  { id: 2, date: "2025-04-02", time: "06:00 PM", portion: "100g", status: "Successful" },
-  { id: 3, date: "2025-04-02", time: "12:30 PM", portion: "120g", status: "Successful" },
-  { id: 4, date: "2025-04-02", time: "06:00 AM", portion: "100g", status: "Failed" },
-  { id: 5, date: "2025-04-01", time: "06:00 PM", portion: "100g", status: "Successful" },
-]
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useScheduleStore } from "@/store/scheduleStore";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import toast from "react-hot-toast";
 
 // Days of the week for checkboxes
 const daysOfWeek = [
@@ -50,50 +37,161 @@ const daysOfWeek = [
   { id: "fri", label: "Fri" },
   { id: "sat", label: "Sat" },
   { id: "sun", label: "Sun" },
-]
+];
+
+// Sample data for recent automated feeds
+const recentFeeds = [
+  { id: 1, date: "2025-04-03", time: "06:00 AM", portion: "100g", status: "Successful" },
+  { id: 2, date: "2025-04-02", time: "06:00 PM", portion: "100g", status: "Successful" },
+  { id: 3, date: "2025-04-02", time: "12:30 PM", portion: "120g", status: "Successful" },
+  { id: 4, date: "2025-04-02", time: "06:00 AM", portion: "100g", status: "Failed" },
+  { id: 5, date: "2025-04-01", time: "06:00 PM", portion: "100g", status: "Successful" },
+];
+
+// Form schema for validation
+const scheduleSchema = z.object({
+  time: z.string().nonempty("Time is required"),
+  portion: z
+    .string()
+    .nonempty("Portion size is required")
+    .transform((val) => `${val}g`),
+  frequency: z.enum(["daily", "custom", "specific"], { required_error: "Frequency is required" }),
+  notes: z.string().optional(),
+});
+
+type ScheduleFormData = z.infer<typeof scheduleSchema>;
 
 export default function Schedule({ navigateTo }: { navigateTo: (path: string) => void }) {
-  const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [currentSchedule, setCurrentSchedule] = useState<any>(null)
-  const [automatedFeeding, setAutomatedFeeding] = useState(true)
-  const [manualReminders, setManualReminders] = useState(false)
-  const [notificationMethod, setNotificationMethod] = useState("app")
-  const [filterStatus, setFilterStatus] = useState("all")
-  const [sortBy, setSortBy] = useState("time")
+  const { schedules, fetchSchedules, addSchedule, updateSchedule, deleteSchedule } = useScheduleStore();
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [scheduleToDelete, setScheduleToDelete] = useState<string | null>(null);
+  const [currentSchedule, setCurrentSchedule] = useState<any>(null);
+  const [automatedFeeding, setAutomatedFeeding] = useState(true);
+  const [manualReminders, setManualReminders] = useState(false);
+  const [notificationMethod, setNotificationMethod] = useState("app");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [sortBy, setSortBy] = useState("time");
 
-  // Filter schedules based on status
-  const filteredSchedules = scheduleData.filter((schedule) => {
-    if (filterStatus === "all") return true
-    return schedule.status.toLowerCase() === filterStatus.toLowerCase()
-  })
+  // State for Add Dialog
+  const [addDays, setAddDays] = useState<string[]>([]);
 
-  // Sort schedules based on selected sort option
-  const sortedSchedules = [...filteredSchedules].sort((a, b) => {
-    if (sortBy === "time") {
-      return a.time.localeCompare(b.time)
-    } else if (sortBy === "frequency") {
-      return a.frequency.localeCompare(b.frequency)
+  // State for Edit Dialog
+  const [editDays, setEditDays] = useState<string[]>([]);
+  const [editStatus, setEditStatus] = useState<"Active" | "Paused">("Active");
+
+  // Form hooks
+  const addForm = useForm<ScheduleFormData>({
+    resolver: zodResolver(scheduleSchema),
+    defaultValues: { time: "", portion: "", frequency: "daily", notes: "" },
+    mode: "onChange", // Validate on change to clear errors as fields are filled
+  });
+
+  const editForm = useForm<ScheduleFormData>({
+    resolver: zodResolver(scheduleSchema),
+    defaultValues: { time: "", portion: "", frequency: "daily", notes: "" },
+    mode: "onChange", // Validate on change
+  });
+
+  // Fetch schedules on mount
+  useEffect(() => {
+    fetchSchedules();
+  }, [fetchSchedules]);
+
+  // Set initial edit dialog state
+  useEffect(() => {
+    if (currentSchedule) {
+      setEditStatus(currentSchedule.status);
+      setEditDays(currentSchedule.days || []);
+      editForm.reset({
+        time: currentSchedule.time,
+        portion: currentSchedule.portion.replace("g", ""),
+        frequency: currentSchedule.frequency as "daily" | "custom" | "specific",
+        notes: currentSchedule.notes || "",
+      });
     }
-    return 0
-  })
+  }, [currentSchedule, editForm]);
 
-  // Handle edit schedule
+  // Filter and sort schedules
+  const filteredSchedules = schedules.filter((schedule) =>
+    filterStatus === "all" ? true : schedule.status.toLowerCase() === filterStatus.toLowerCase()
+  );
+  const sortedSchedules = [...filteredSchedules].sort((a, b) =>
+    sortBy === "time" ? a.time.localeCompare(b.time) : a.frequency.localeCompare(b.frequency)
+  );
+
+  // Handle adding a new schedule
+  const handleAddSchedule = async (data: ScheduleFormData) => {
+    const days =
+      data.frequency === "daily" ? daysOfWeek.map((day) => day.label) : data.frequency === "specific" ? addDays : [];
+    const newSchedule = { ...data, days, status: "Active" as const };
+    try {
+      await addSchedule(newSchedule);
+      setAddDialogOpen(false);
+      setAddDays([]);
+      addForm.reset();
+    } catch (error) {
+      console.error("Failed to add schedule:", error);
+      toast.error("Failed to add schedule. Please try again.");
+    }
+  };
+
+  // Handle editing a schedule
   const handleEditSchedule = (schedule: any) => {
-    setCurrentSchedule(schedule)
-    setEditDialogOpen(true)
-  }
+    setCurrentSchedule(schedule);
+    setEditDialogOpen(true);
+  };
 
-  const handleFeedNow = () => {
-    alert("Feeding now!")
-  }
+  const handleEditScheduleSubmit = async (data: ScheduleFormData) => {
+    const days =
+      data.frequency === "daily" ? daysOfWeek.map((day) => day.label) : data.frequency === "specific" ? editDays : [];
+    const updatedSchedule = { ...data, days, status: editStatus };
+    try {
+      if (currentSchedule?._id) {
+        await updateSchedule(currentSchedule._id, updatedSchedule);
+      }
+      setEditDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to update schedule:", error);
+      toast.error("Failed to update schedule. Please try again.");
+    }
+  };
+
+  // Handle deleting a schedule
+  const confirmDeleteSchedule = (id: string) => {
+    setScheduleToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteSchedule = async () => {
+    if (scheduleToDelete) {
+      try {
+        await deleteSchedule(scheduleToDelete);
+      } catch (error) {
+        console.error("Failed to delete schedule:", error);
+        toast.error("Failed to delete schedule. Please try again.");
+      } finally {
+        setDeleteDialogOpen(false);
+        setScheduleToDelete(null);
+      }
+    }
+  };
+
+  // Handle checkbox changes
+  const handleAddDayChange = (day: string, checked: boolean) =>
+    setAddDays((prev) => (checked ? [...prev, day] : prev.filter((d) => d !== day)));
+  const handleEditDayChange = (day: string, checked: boolean) =>
+    setEditDays((prev) => (checked ? [...prev, day] : prev.filter((d) => d !== day)));
+
+  const handleFeedNow = () => toast("Feeding now!");
 
   return (
     <Layout
       currentPath="/schedule"
       navigateTo={navigateTo}
       title="Feed Schedule"
-      showFeedNowButton={true}
+      showFeedNowButton
       onFeedNow={handleFeedNow}
     >
       <div className="grid gap-6 md:grid-cols-3">
@@ -113,61 +211,121 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Add New Feeding Schedule</DialogTitle>
-                    <DialogDescription>Create a new scheduled feeding time for your pet.</DialogDescription>
-                  </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="time">Time</Label>
-                      <Input id="time" type="time" />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="portion">Portion Size (grams)</Label>
-                      <Input id="portion" type="number" min="1" placeholder="100" />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="frequency">Frequency</Label>
-                      <Select defaultValue="daily">
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select frequency" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="custom">Every X Hours</SelectItem>
-                          <SelectItem value="specific">Specific Days</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label>Days of Week</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {daysOfWeek.map((day) => (
-                          <div key={day.id} className="flex items-center space-x-2">
-                            <Checkbox id={day.id} />
-                            <Label htmlFor={day.id} className="text-sm font-normal">
-                              {day.label}
-                            </Label>
+                  <form onSubmit={addForm.handleSubmit(handleAddSchedule)}>
+                    <DialogHeader>
+                      <DialogTitle>Add New Feeding Schedule</DialogTitle>
+                      <DialogDescription>Create a new scheduled feeding time for your pet.</DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-6 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="time">Time</Label>
+                        <Controller
+                          name="time"
+                          control={addForm.control}
+                          render={({ field }) => (
+                            <Input
+                              id="time"
+                              type="time"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                addForm.trigger("time"); // Trigger validation
+                              }}
+                            />
+                          )}
+                        />
+                        {addForm.formState.errors.time && (
+                          <p className="text-sm text-red-500">{addForm.formState.errors.time.message}</p>
+                        )}
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="portion">Portion Size (grams)</Label>
+                        <Controller
+                          name="portion"
+                          control={addForm.control}
+                          render={({ field }) => (
+                            <Input
+                              id="portion"
+                              type="number"
+                              min="1"
+                              placeholder="100"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                addForm.trigger("portion"); // Trigger validation
+                              }}
+                            />
+                          )}
+                        />
+                        {addForm.formState.errors.portion && (
+                          <p className="text-sm text-red-500">{addForm.formState.errors.portion.message}</p>
+                        )}
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="frequency">Frequency</Label>
+                        <Controller
+                          name="frequency"
+                          control={addForm.control}
+                          render={({ field }) => (
+                            <Select
+                              value={field.value}
+                              onValueChange={(val) => {
+                                field.onChange(val);
+                                addForm.trigger("frequency"); // Trigger validation
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select frequency" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="daily">Daily</SelectItem>
+                                <SelectItem value="custom">Every X Hours</SelectItem>
+                                <SelectItem value="specific">Specific Days</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {addForm.formState.errors.frequency && (
+                          <p className="text-sm text-red-500">{addForm.formState.errors.frequency.message}</p>
+                        )}
+                      </div>
+                      {addForm.watch("frequency") === "specific" && (
+                        <div className="grid gap-2">
+                          <Label>Days of Week</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {daysOfWeek.map((day) => (
+                              <div key={day.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={day.id}
+                                  checked={addDays.includes(day.label)}
+                                  onCheckedChange={(checked) => handleAddDayChange(day.label, checked as boolean)}
+                                />
+                                <Label htmlFor={day.id} className="text-sm font-normal">{day.label}</Label>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        </div>
+                      )}
+                      <div className="grid gap-2">
+                        <Label htmlFor="notes">Notes (Optional)</Label>
+                        <Controller
+                          name="notes"
+                          control={addForm.control}
+                          render={({ field }) => (
+                            <Input id="notes" placeholder="Add any additional information" {...field} />
+                          )}
+                        />
                       </div>
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="notes">Notes (Optional)</Label>
-                      <Input id="notes" placeholder="Add any additional information" />
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={() => setAddDialogOpen(false)}
-                      className="bg-orange-500 hover:bg-orange-600 text-white"
-                    >
-                      Save
-                    </Button>
-                  </DialogFooter>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" className="bg-orange-500 hover:bg-orange-600 text-white">
+                        Save
+                      </Button>
+                    </DialogFooter>
+                  </form>
                 </DialogContent>
               </Dialog>
             </CardHeader>
@@ -199,50 +357,57 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
                   </Select>
                 </div>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Portion Size</TableHead>
-                    <TableHead>Frequency</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedSchedules.map((schedule) => (
-                    <TableRow key={schedule.id}>
-                      <TableCell className="font-medium">{schedule.time}</TableCell>
-                      <TableCell>{schedule.portion}</TableCell>
-                      <TableCell>{schedule.frequency}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={schedule.status === "Active" ? "outline" : "secondary"}
-                          className={
-                            schedule.status === "Active"
-                              ? "bg-green-100 text-green-600 hover:bg-green-200 border-green-200"
-                              : "bg-gray-100 text-gray-700"
-                          }
-                        >
-                          {schedule.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleEditSchedule(schedule)}>
-                            <Settings className="h-4 w-4" />
-                            <span className="sr-only">Edit</span>
-                          </Button>
-                          <Button variant="ghost" size="icon">
-                            <Trash2 className="h-4 w-4" />
-                            <span className="sr-only">Delete</span>
-                          </Button>
-                        </div>
-                      </TableCell>
+              {sortedSchedules.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10">
+                  <CalendarX className="h-12 w-12 text-gray-400 mb-2" />
+                  <p className="text-gray-500 text-lg">No schedule added yet</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Portion Size</TableHead>
+                      <TableHead>Frequency</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedSchedules.map((schedule) => (
+                      <TableRow key={schedule._id}>
+                        <TableCell className="font-medium">{schedule.time}</TableCell>
+                        <TableCell>{schedule.portion}</TableCell>
+                        <TableCell>{schedule.frequency}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={schedule.status === "Active" ? "outline" : "secondary"}
+                            className={
+                              schedule.status === "Active"
+                                ? "bg-green-100 text-green-600 hover:bg-green-200 border-green-200"
+                                : "bg-gray-100 text-gray-700"
+                            }
+                          >
+                            {schedule.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditSchedule(schedule)}>
+                              <Settings className="h-4 w-4" />
+                              <span className="sr-only">Edit</span>
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => confirmDeleteSchedule(schedule._id!)}>
+                              <Trash2 className="h-4 w-4" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
 
@@ -295,7 +460,6 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
 
         {/* Right Panel - Settings and Tips */}
         <div className="space-y-6">
-          {/* Automated Feeding Settings */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Automated Feeding</CardTitle>
@@ -312,7 +476,6 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
             </CardContent>
           </Card>
 
-          {/* Manual Feeding Reminder */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Manual Feeding Reminders</CardTitle>
@@ -326,7 +489,6 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
                 </div>
                 <Switch checked={manualReminders} onCheckedChange={setManualReminders} />
               </div>
-
               <div className="space-y-2">
                 <Label>Reminder Frequency</Label>
                 <Select defaultValue="4">
@@ -341,7 +503,6 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label>Notification Method</Label>
                 <RadioGroup defaultValue="app" value={notificationMethod} onValueChange={setNotificationMethod}>
@@ -359,12 +520,10 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
                   </div>
                 </RadioGroup>
               </div>
-
               <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">Save Preferences</Button>
             </CardContent>
           </Card>
 
-          {/* Schedule Optimization Tips */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Schedule Optimization Tips</CardTitle>
@@ -396,77 +555,155 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
       {/* Edit Schedule Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Edit Feeding Schedule</DialogTitle>
-            <DialogDescription>Modify the existing feeding schedule.</DialogDescription>
-          </DialogHeader>
-          {currentSchedule && (
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-time">Time</Label>
-                <Input id="edit-time" type="time" defaultValue={currentSchedule.time} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-portion">Portion Size (grams)</Label>
-                <Input
-                  id="edit-portion"
-                  type="number"
-                  min="1"
-                  defaultValue={currentSchedule.portion.replace("g", "")}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-frequency">Frequency</Label>
-                <Select defaultValue="daily">
-                  <SelectTrigger>
-                    <SelectValue placeholder={currentSchedule.frequency} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="daily">Daily</SelectItem>
-                    <SelectItem value="custom">Every X Hours</SelectItem>
-                    <SelectItem value="specific">Specific Days</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label>Days of Week</Label>
-                <div className="flex flex-wrap gap-2">
-                  {daysOfWeek.map((day) => (
-                    <div key={`edit-${day.id}`} className="flex items-center space-x-2">
-                      <Checkbox id={`edit-${day.id}`} defaultChecked={currentSchedule.frequency.includes(day.label)} />
-                      <Label htmlFor={`edit-${day.id}`} className="text-sm font-normal">
-                        {day.label}
-                      </Label>
+          <form onSubmit={editForm.handleSubmit(handleEditScheduleSubmit)}>
+            <DialogHeader>
+              <DialogTitle>Edit Feeding Schedule</DialogTitle>
+              <DialogDescription>Modify the existing feeding schedule.</DialogDescription>
+            </DialogHeader>
+            {currentSchedule && (
+              <div className="grid gap-6 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-time">Time</Label>
+                  <Controller
+                    name="time"
+                    control={editForm.control}
+                    render={({ field }) => (
+                      <Input
+                        id="edit-time"
+                        type="time"
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          editForm.trigger("time");
+                        }}
+                      />
+                    )}
+                  />
+                  {editForm.formState.errors.time && (
+                    <p className="text-sm text-red-500">{editForm.formState.errors.time.message}</p>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-portion">Portion Size (grams)</Label>
+                  <Controller
+                    name="portion"
+                    control={editForm.control}
+                    render={({ field }) => (
+                      <Input
+                        id="edit-portion"
+                        type="number"
+                        min="1"
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          editForm.trigger("portion");
+                        }}
+                      />
+                    )}
+                  />
+                  {editForm.formState.errors.portion && (
+                    <p className="text-sm text-red-500">{editForm.formState.errors.portion.message}</p>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-frequency">Frequency</Label>
+                  <Controller
+                    name="frequency"
+                    control={editForm.control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={(val) => {
+                          field.onChange(val);
+                          editForm.trigger("frequency");
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="custom">Every X Hours</SelectItem>
+                          <SelectItem value="specific">Specific Days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {editForm.formState.errors.frequency && (
+                    <p className="text-sm text-red-500">{editForm.formState.errors.frequency.message}</p>
+                  )}
+                </div>
+                {editForm.watch("frequency") === "specific" && (
+                  <div className="grid gap-2">
+                    <Label>Days of Week</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {daysOfWeek.map((day) => (
+                        <div key={`edit-${day.id}`} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`edit-${day.id}`}
+                            checked={editDays.includes(day.label)}
+                            onCheckedChange={(checked) => handleEditDayChange(day.label, checked as boolean)}
+                          />
+                          <Label htmlFor={`edit-${day.id}`} className="text-sm font-normal">{day.label}</Label>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                )}
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-notes">Notes (Optional)</Label>
+                  <Controller
+                    name="notes"
+                    control={editForm.control}
+                    render={({ field }) => (
+                      <Input id="edit-notes" placeholder="Add any additional information" {...field} />
+                    )}
+                  />
                 </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-notes">Notes (Optional)</Label>
-                <Input id="edit-notes" placeholder="Add any additional information" />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Label>Status</Label>
                 <div className="flex items-center space-x-2">
-                  <Switch defaultChecked={currentSchedule.status === "Active"} />
-                  <Label className="text-sm font-normal">
-                    {currentSchedule.status === "Active" ? "Active" : "Paused"}
-                  </Label>
+                  <Label>Status</Label>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="status"
+                      checked={editStatus === "Active"}
+                      onCheckedChange={(checked) => setEditStatus(checked ? "Active" : "Paused")}
+                    />
+                    <Label className="text-sm font-normal">{editStatus}</Label>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-orange-500 hover:bg-orange-600 text-white">
+                Update
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the schedule.
+            </DialogDescription>
+          </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => setEditDialogOpen(false)} className="bg-orange-500 hover:bg-orange-600 text-white">
-              Update
+            <Button variant="destructive" onClick={handleDeleteSchedule}>
+              Delete
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </Layout>
-  )
+  );
 }
-

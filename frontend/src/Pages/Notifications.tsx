@@ -47,22 +47,7 @@ const notificationsData = [
     type: "info",
     channel: "in-app",
   },
-  {
-    id: 5,
-    message: "Scheduled feeding missed due to low food level.",
-    timestamp: "2025-04-02T18:00:00",
-    read: false,
-    type: "critical",
-    channel: "email",
-  },
-  {
-    id: 6,
-    message: "Weekly feeding report is now available.",
-    timestamp: "2025-04-02T09:00:00",
-    read: true,
-    type: "info",
-    channel: "email",
-  },
+
   {
     id: 7,
     message: "Firmware update available for your feeder.",
@@ -95,14 +80,7 @@ const notificationsData = [
     type: "warning",
     channel: "sms",
   },
-  {
-    id: 11,
-    message: "Monthly usage statistics are ready to view.",
-    timestamp: "2025-03-30T09:00:00",
-    read: true,
-    type: "info",
-    channel: "email",
-  },
+
   {
     id: 12,
     message: "Feeder has been inactive for 24 hours.",
@@ -291,19 +269,7 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
                   </div>
                   <Switch id="sms-alerts" checked={smsAlerts} onCheckedChange={setSmsAlerts} />
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-gray-500" />
-                    <Label htmlFor="email-notifications" className="text-sm">
-                      Email Notifications
-                    </Label>
-                  </div>
-                  <Switch
-                    id="email-notifications"
-                    checked={emailNotifications}
-                    onCheckedChange={setEmailNotifications}
-                  />
-                </div>
+               
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-gray-500" />
@@ -319,39 +285,7 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
                 </div>
               </div>
 
-              <div className="space-y-4 pt-2">
-                <h3 className="text-sm font-medium">Alert Types</h3>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="motion-detection-alerts" className="text-sm">
-                    Motion Detection Alerts
-                  </Label>
-                  <Switch
-                    id="motion-detection-alerts"
-                    checked={motionDetectionAlerts}
-                    onCheckedChange={setMotionDetectionAlerts}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="low-food-level-alerts" className="text-sm">
-                    Low Food Level Alerts
-                  </Label>
-                  <Switch
-                    id="low-food-level-alerts"
-                    checked={lowFoodLevelAlerts}
-                    onCheckedChange={setLowFoodLevelAlerts}
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="feeding-failure-alerts" className="text-sm">
-                    Feeding Failure Alerts
-                  </Label>
-                  <Switch
-                    id="feeding-failure-alerts"
-                    checked={feedingFailureAlerts}
-                    onCheckedChange={setFeedingFailureAlerts}
-                  />
-                </div>
-              </div>
+             
             </CardContent>
             <CardFooter>
               <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white" onClick={handleSavePreferences}>
@@ -374,16 +308,9 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
                 <Info className="h-5 w-5 text-orange-500 shrink-0" />
                 <p className="text-sm">SMS not working? Verify your phone number.</p>
               </div>
-              <div className="flex gap-3">
-                <Info className="h-5 w-5 text-orange-500 shrink-0" />
-                <p className="text-sm">Email notifications in spam? Add our address to your contacts.</p>
-              </div>
+              
             </CardContent>
-            <CardFooter>
-              <Button variant="link" className="text-orange-500 w-full">
-                Visit the Help Center for more support
-              </Button>
-            </CardFooter>
+        
           </Card>
         </div>
 
@@ -413,7 +340,6 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
                     <SelectItem value="sms">SMS</SelectItem>
-                    <SelectItem value="email">Email</SelectItem>
                     <SelectItem value="in-app">In-App</SelectItem>
                   </SelectContent>
                 </Select>
@@ -443,7 +369,7 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
                         <div className="mt-0.5">
                           {notification.channel === "sms" ? (
                             <Phone className="h-5 w-5 text-blue-500" />
-                          ) : notification.channel === "email" ? (
+                          ) : notification.channel === "" ? (
                             <Mail className="h-5 w-5 text-green-500" />
                           ) : (
                             <Bell className="h-5 w-5 text-orange-500" />

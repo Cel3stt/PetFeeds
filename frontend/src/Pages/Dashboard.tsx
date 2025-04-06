@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Layout } from "@/components/layout"
 import { StatusCard } from "@/components/status-card"
 import { CircularProgress } from "@/components/circular-progress"
@@ -19,9 +20,9 @@ const monthlyFeedingData = [
   { name: "July", grams: 11000 },
   { name: "Aug", grams: 37000 },
   { name: "Sep", grams: 43000 },
-  { name: "Oct",grams: 45000 },
+  { name: "Oct", grams: 45000 },
   { name: "Nov", grams: 7000 },
-  { name: "Dec",grams: 37000 },
+  { name: "Dec", grams: 37000 },
 ]
 
 // Sample data for recent activity
@@ -33,9 +34,11 @@ const recentActivity = [
 ]
 
 export default function Dashboard({ navigateTo }: { navigateTo: (path: string) => void }) {
-  const foodLevel = 75 // Percentage of food remaining
+  const [foodLevel, setFoodLevel] = useState(75) // Initial food level percentage
 
   const handleFeedNow = () => {
+    // Decrease food level by 5% (or any amount you prefer) when feeding
+    setFoodLevel((prevLevel) => Math.max(0, prevLevel - 5)) // Prevent going below 0
     alert("Feeding now!")
   }
 
@@ -56,7 +59,7 @@ export default function Dashboard({ navigateTo }: { navigateTo: (path: string) =
           value={
             <div className="flex items-center">
               <CircularProgress value={foodLevel} size={90} strokeWidth={8} />
-             
+              <span className="ml-4 text-xl font-semibold">{foodLevel}%</span>
             </div>
           }
           subtitle={`Last feeding: Today, 12:30 PM`}
@@ -142,4 +145,3 @@ export default function Dashboard({ navigateTo }: { navigateTo: (path: string) =
     </Layout>
   )
 }
-

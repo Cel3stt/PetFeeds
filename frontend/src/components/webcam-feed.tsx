@@ -56,14 +56,14 @@ export function WebcamFeed({ onCapture }: WebcamFeedProps) {
             <Button variant="ghost" size="icon" className="text-white hover:bg-white/20" onClick={capture}>
               <CameraIcon className="h-5 w-5" />
             </Button>
-            <Button
+            {/* <Button
               variant="ghost"
               size="icon"
               className={`text-white hover:bg-white/20 ${isRecording ? "text-red-500" : ""}`}
               onClick={handleToggleRecording}
             >
               <Video className="h-5 w-5" />
-            </Button>
+            </Button> */}
             <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
               <Maximize2 className="h-5 w-5" />
             </Button>
