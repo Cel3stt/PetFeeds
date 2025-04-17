@@ -211,17 +211,7 @@ export default function CameraPage({ navigateTo }: { navigateTo: (path: string) 
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                {/* Night Vision */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium">Night Vision</h3>
-                    <p className="text-xs text-gray-500">Enable for low-light conditions</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Moon className="h-4 w-4 text-gray-500" />
-                    <Switch checked={nightVision} onCheckedChange={setNightVision} />
-                  </div>
-                </div>
+               
 
                 {/* Rotate Camera */}
                 <div className="flex items-center justify-between">
@@ -317,12 +307,7 @@ export default function CameraPage({ navigateTo }: { navigateTo: (path: string) 
                     Poor video quality? Adjust resolution in settings or check your internet speed.
                   </p>
                 </div>
-                <div className="flex gap-3">
-                  <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
-                  <p className="text-sm">
-                    Night vision not working? Make sure the room is dark enough to trigger the sensor.
-                  </p>
-                </div>
+                
               </div>
             </CardContent>
             <CardFooter>

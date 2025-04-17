@@ -21,6 +21,7 @@ import {
   AlertCircle,
   Battery,
   BellRing,
+  Calendar1Icon,
   Camera,
   Check,
   CreditCard,
@@ -72,8 +73,7 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
   const [wifiNetwork, setWifiNetwork] = useState("Home-Network-5G")
   const [batteryLevel, setBatteryLevel] = useState(78)
   const [storageUsage, setStorageUsage] = useState(42)
-  const [firmwareVersion, setFirmwareVersion] = useState("v2.3.1")
-  const [firmwareUpdateAvailable, setFirmwareUpdateAvailable] = useState(true)
+  
 
   // Feeding settings state
   const [defaultPortionSize, setDefaultPortionSize] = useState("100")
@@ -128,11 +128,6 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
     setConfirmPassword("")
   }
 
-  // Handle firmware update
-  const handleFirmwareUpdate = () => {
-    alert("Firmware update started. This may take a few minutes.")
-    // In a real app, this would trigger the update process
-  }
 
   // Handle factory reset
   const handleFactoryReset = () => {
@@ -205,20 +200,7 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
                     <Database className="h-4 w-4 mr-2" />
                     Data & Storage
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="notifications"
-                    className="justify-start px-4 py-3 data-[state=active]:bg-orange-50 data-[state=active]:text-orange-500"
-                  >
-                    <BellRing className="h-4 w-4 mr-2" />
-                    Notifications
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="billing"
-                    className="justify-start px-4 py-3 data-[state=active]:bg-orange-50 data-[state=active]:text-orange-500"
-                  >
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Billing
-                  </TabsTrigger>
+                 
                 </TabsList>
               </Tabs>
             </CardContent>
@@ -318,8 +300,8 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
                 </Card>
 
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Security</CardTitle>
+                  <CardHeader className="bg-orange-50 p-4 m-4">
+                    <CardTitle className="font-semibold ">Security</CardTitle>
                     <CardDescription>Manage your password and account security</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -383,31 +365,16 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
                       </Dialog>
                     </div>
 
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Two-Factor Authentication</h3>
-                        <p className="text-sm text-gray-500">Add an extra layer of security to your account</p>
-                      </div>
-                      <Button variant="outline">Enable</Button>
-                    </div>
 
                     <Separator />
 
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Connected Accounts</h3>
-                        <p className="text-sm text-gray-500">Link your accounts for easier login</p>
-                      </div>
-                      <Button variant="outline">Manage</Button>
-                    </div>
+                   
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Account Management</CardTitle>
+                  <CardHeader className="bg-orange-50 p-4 m-4">
+                    <CardTitle className="font-semibold">Account Management</CardTitle>
                     <CardDescription>Manage your account data and preferences</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -459,23 +426,12 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
             {activeTab === "device" && (
               <>
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Device Information</CardTitle>
+                  <CardHeader className="bg-orange-50 p-4 m-4">
+                    <CardTitle className="font-semibold">Device Information</CardTitle>
                     <CardDescription>View and manage your connected pet feeder</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Device Name</h3>
-                        <p className="text-base">{deviceName}</p>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        Rename
-                      </Button>
-                    </div>
-
-                    <Separator />
-
+                  <CardContent className="">
+                   
                     <div>
                       <h3 className="text-sm font-medium">Device ID</h3>
                       <p className="text-base">{deviceId}</p>
@@ -483,57 +439,17 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
 
                     <Separator />
 
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Firmware Version</h3>
-                        <div className="flex items-center gap-2">
-                          <p className="text-base">{firmwareVersion}</p>
-                          {firmwareUpdateAvailable && (
-                            <Badge className="bg-green-100 text-green-600 border-green-200">Update Available</Badge>
-                          )}
-                        </div>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={!firmwareUpdateAvailable}
-                        onClick={handleFirmwareUpdate}
-                      >
-                        Update Firmware
-                      </Button>
-                    </div>
+                  
                   </CardContent>
                 </Card>
 
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Wi-Fi Settings</CardTitle>
+                  <CardHeader className="bg-orange-50 p-4 m-4">
+                    <CardTitle className="font-semibold">Wi-Fi Settings</CardTitle>
                     <CardDescription>Manage your device's network connection</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Wi-Fi Status</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge
-                            className={
-                              wifiStatus === "Connected"
-                                ? "bg-green-100 text-green-600 border-green-200"
-                                : "bg-red-100 text-red-600 border-red-200"
-                            }
-                          >
-                            {wifiStatus}
-                          </Badge>
-                        </div>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setWifiStatus(wifiStatus === "Connected" ? "Disconnected" : "Connected")}
-                      >
-                        {wifiStatus === "Connected" ? "Disconnect" : "Connect"}
-                      </Button>
-                    </div>
+                    
 
                     <Separator />
 
@@ -602,8 +518,8 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
                 </Card>
 
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Device Health</CardTitle>
+                  <CardHeader className="bg-orange-50 p-4 m-4">
+                    <CardTitle className="font-semibold">Device Health</CardTitle>
                     <CardDescription>Monitor your device's status and performance</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -648,8 +564,8 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
                 </Card>
 
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Device Management</CardTitle>
+                  <CardHeader className="bg-orange-50 p-4 m-4">
+                    <CardTitle className="font-semibold">Device Management</CardTitle>
                     <CardDescription>Advanced device operations</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -805,8 +721,8 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
                 </Card>
 
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Food Management</CardTitle>
+                  <CardHeader className="bg-orange-50 p-4 m-4">
+                    <CardTitle className="font-semibold">Food Management</CardTitle>
                     <CardDescription>Track and manage your pet's food supply</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -832,25 +748,6 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
 
                     <Separator />
 
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Food Type</h3>
-                        <p className="text-sm text-gray-500">Select the type of food you're using</p>
-                      </div>
-                      <Select defaultValue="dry-kibble">
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Select food type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="dry-kibble">Dry Kibble</SelectItem>
-                          <SelectItem value="semi-moist">Semi-Moist</SelectItem>
-                          <SelectItem value="wet-food">Wet Food</SelectItem>
-                          <SelectItem value="custom">Custom</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <Separator />
 
                     <div className="flex items-center justify-between">
                       <div>
@@ -862,77 +759,16 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Feeding Schedule</CardTitle>
-                    <CardDescription>Manage your pet's feeding times</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button
-                      className="w-full bg-orange-500 hover:bg-orange-600 text-white"
-                      onClick={() => navigateTo("/schedule")}
-                    >
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Go to Schedule Page
-                    </Button>
-                  </CardContent>
-                </Card>
               </>
             )}
 
             {/* Data & Storage Settings */}
             {activeTab === "data" && (
               <>
+               
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Data Storage</CardTitle>
-                    <CardDescription>Manage how your data is stored and used</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Cloud Backup</h3>
-                        <p className="text-sm text-gray-500">Automatically back up your feeding data to the cloud</p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Local Storage</h3>
-                        <p className="text-sm text-gray-500">Keep a copy of your data on the device</p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Data Retention</h3>
-                        <p className="text-sm text-gray-500">How long to keep your feeding history</p>
-                      </div>
-                      <Select defaultValue="6-months">
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Select period" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1-month">1 Month</SelectItem>
-                          <SelectItem value="3-months">3 Months</SelectItem>
-                          <SelectItem value="6-months">6 Months</SelectItem>
-                          <SelectItem value="1-year">1 Year</SelectItem>
-                          <SelectItem value="forever">Forever</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Camera Storage</CardTitle>
+                  <CardHeader className="bg-orange-50 p-4 m-4">
+                    <CardTitle className="font-semibold">Camera Storage</CardTitle>
                     <CardDescription>Manage camera snapshots and recordings</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -944,25 +780,7 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
                       <Switch defaultChecked />
                     </div>
 
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Image Quality</h3>
-                        <p className="text-sm text-gray-500">Set the quality of saved images</p>
-                      </div>
-                      <Select defaultValue="high">
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Select quality" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="low">Low (saves space)</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
+                   
                     <Separator />
 
                     <div className="flex items-center justify-between">
@@ -994,86 +812,10 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Export Data</CardTitle>
-                    <CardDescription>Download your data for backup or analysis</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Feeding History</h3>
-                        <p className="text-sm text-gray-500">Export your complete feeding logs</p>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        <Download className="h-4 w-4 mr-2" />
-                        Export CSV
-                      </Button>
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Camera Images</h3>
-                        <p className="text-sm text-gray-500">Download all your saved snapshots</p>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        <Download className="h-4 w-4 mr-2" />
-                        Export ZIP
-                      </Button>
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Complete Backup</h3>
-                        <p className="text-sm text-gray-500">Export all data and settings</p>
-                      </div>
-                      <Button variant="outline" size="sm">
-                        <Download className="h-4 w-4 mr-2" />
-                        Export All
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                
               </>
             )}
 
-            {/* Placeholder for other tabs */}
-            {(activeTab === "notifications" || activeTab === "billing") && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>{activeTab === "notifications" ? "Notification Settings" : "Billing Settings"}</CardTitle>
-                  <CardDescription>
-                    {activeTab === "notifications"
-                      ? "Manage your notification preferences"
-                      : "Manage your subscription and payment methods"}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="py-10">
-                  <div className="text-center">
-                    <AlertCircle className="h-10 w-10 text-orange-500 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">Coming Soon</h3>
-                    <p className="text-gray-500">
-                      {activeTab === "notifications"
-                        ? "Detailed notification settings will be available in the next update."
-                        : "Billing management will be available in the next update."}
-                    </p>
-                    {activeTab === "notifications" && (
-                      <Button
-                        className="mt-4 bg-orange-500 hover:bg-orange-600 text-white"
-                        onClick={() => navigateTo("/notifications")}
-                      >
-                        <BellRing className="h-4 w-4 mr-2" />
-                        Go to Notifications Page
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
         </div>
       </div>

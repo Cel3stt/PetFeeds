@@ -1,5 +1,5 @@
 "use client"
-import { Bell, Calendar, Camera, Home, MessageSquareText, Settings } from "lucide-react"
+import { Bell, Book, Calendar, Camera, Home, MessageSquareText, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -14,6 +14,7 @@ export function Sidebar({ currentPath, navigateTo }: SidebarProps) {
     { path: "/schedule", label: "Feed Schedule", icon: Calendar },
     { path: "/camera", label: "Live Camera", icon: Camera },
     { path: "/notifications", label: "Notifications", icon: Bell, badge: 16 },
+    { path: "/history", label: "History", icon: Book},
     { path: "/settings", label: "Settings", icon: Settings },
   ]
 

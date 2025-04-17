@@ -9,9 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AlertCircle, Bell, Check, Download, Info, Mail, MessageSquare, Phone, Search, Trash2 } from "lucide-react"
+
+import { AlertCircle, Bell, Check, Info, Mail, MessageSquare, Phone, Search, Trash2 } from "lucide-react"
 
 // Sample notification data
 const notificationsData = [
@@ -39,31 +38,7 @@ const notificationsData = [
     type: "critical",
     channel: "sms",
   },
-  {
-    id: 4,
-    message: "Motion detected near the feeder.",
-    timestamp: "2025-04-02T19:20:33",
-    read: true,
-    type: "info",
-    channel: "in-app",
-  },
 
-  {
-    id: 7,
-    message: "Firmware update available for your feeder.",
-    timestamp: "2025-04-01T15:45:00",
-    read: false,
-    type: "info",
-    channel: "in-app",
-  },
-  {
-    id: 8,
-    message: "Battery level is low on your feeder device.",
-    timestamp: "2025-04-01T10:30:00",
-    read: true,
-    type: "warning",
-    channel: "sms",
-  },
   {
     id: 9,
     message: "Your pet has been fed 3 times today.",
@@ -71,14 +46,6 @@ const notificationsData = [
     read: true,
     type: "info",
     channel: "in-app",
-  },
-  {
-    id: 10,
-    message: "Unusual activity detected - multiple feeding attempts.",
-    timestamp: "2025-03-31T14:20:00",
-    read: false,
-    type: "warning",
-    channel: "sms",
   },
 
   {
@@ -121,11 +88,8 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
 
   // Notification preferences
   const [smsAlerts, setSmsAlerts] = useState(true)
-  const [emailNotifications, setEmailNotifications] = useState(true)
   const [inAppNotifications, setInAppNotifications] = useState(true)
-  const [motionDetectionAlerts, setMotionDetectionAlerts] = useState(true)
-  const [lowFoodLevelAlerts, setLowFoodLevelAlerts] = useState(true)
-  const [feedingFailureAlerts, setFeedingFailureAlerts] = useState(true)
+ 
 
   // Filter notifications based on current filters
   const filteredNotifications = notifications.filter((notification) => {
@@ -189,9 +153,7 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
     alert("Notification preferences saved!")
   }
 
-  const handleExportHistory = () => {
-    alert("Notification history exported!")
-  }
+
 
   return (
     <Layout currentPath="/notifications" navigateTo={navigateTo} title="Notifications">
@@ -460,144 +422,7 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
             </CardContent>
           </Card>
 
-          {/* Notification History Section */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xl font-bold">Notification History</CardTitle>
-              <CardDescription>Complete record of all notifications</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="all">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="critical">Critical</TabsTrigger>
-                  <TabsTrigger value="warning">Warning</TabsTrigger>
-                  <TabsTrigger value="info">Info</TabsTrigger>
-                </TabsList>
-                <TabsContent value="all" className="m-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Channel</TableHead>
-                        <TableHead>Message</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {notifications.map((notification) => (
-                        <TableRow key={notification.id}>
-                          <TableCell>{new Date(notification.timestamp).toLocaleDateString()}</TableCell>
-                          <TableCell>
-                            <Badge
-                              className={
-                                notification.type === "critical"
-                                  ? "bg-red-100 text-red-600 border-red-200"
-                                  : notification.type === "warning"
-                                    ? "bg-yellow-100 text-yellow-600 border-yellow-200"
-                                    : "bg-blue-100 text-blue-600 border-blue-200"
-                              }
-                            >
-                              {notification.type === "critical"
-                                ? "Critical"
-                                : notification.type === "warning"
-                                  ? "Warning"
-                                  : "Info"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="capitalize">{notification.channel}</TableCell>
-                          <TableCell className="max-w-[300px] truncate">{notification.message}</TableCell>
-                          <TableCell>{notification.read ? "Read" : "Unread"}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TabsContent>
-                <TabsContent value="critical" className="m-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Channel</TableHead>
-                        <TableHead>Message</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {notifications
-                        .filter((n) => n.type === "critical")
-                        .map((notification) => (
-                          <TableRow key={notification.id}>
-                            <TableCell>{new Date(notification.timestamp).toLocaleDateString()}</TableCell>
-                            <TableCell className="capitalize">{notification.channel}</TableCell>
-                            <TableCell className="max-w-[300px] truncate">{notification.message}</TableCell>
-                            <TableCell>{notification.read ? "Read" : "Unread"}</TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </TabsContent>
-                <TabsContent value="warning" className="m-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Channel</TableHead>
-                        <TableHead>Message</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {notifications
-                        .filter((n) => n.type === "warning")
-                        .map((notification) => (
-                          <TableRow key={notification.id}>
-                            <TableCell>{new Date(notification.timestamp).toLocaleDateString()}</TableCell>
-                            <TableCell className="capitalize">{notification.channel}</TableCell>
-                            <TableCell className="max-w-[300px] truncate">{notification.message}</TableCell>
-                            <TableCell>{notification.read ? "Read" : "Unread"}</TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </TabsContent>
-                <TabsContent value="info" className="m-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Channel</TableHead>
-                        <TableHead>Message</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {notifications
-                        .filter((n) => n.type === "info")
-                        .map((notification) => (
-                          <TableRow key={notification.id}>
-                            <TableCell>{new Date(notification.timestamp).toLocaleDateString()}</TableCell>
-                            <TableCell className="capitalize">{notification.channel}</TableCell>
-                            <TableCell className="max-w-[300px] truncate">{notification.message}</TableCell>
-                            <TableCell>{notification.read ? "Read" : "Unread"}</TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" size="sm" onClick={handleExportHistory}>
-                <Download className="h-4 w-4 mr-2" />
-                Export History
-              </Button>
-              <Button variant="outline" size="sm">
-                View All
-              </Button>
-            </CardFooter>
-          </Card>
+         
         </div>
       </div>
     </Layout>

@@ -451,8 +451,8 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
               </Table>
             </CardContent>
             <CardFooter>
-              <Button variant="outline" size="sm" className="ml-auto">
-                View All History
+            <Button variant="outline" size="sm" className="ml-auto" onClick={() => navigateTo("/history")}>                
+              View All History
               </Button>
             </CardFooter>
           </Card>
@@ -514,10 +514,7 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
                     <RadioGroupItem value="app" id="app" />
                     <Label htmlFor="app">In-App Notification</Label>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="both" id="both" />
-                    <Label htmlFor="both">Both</Label>
-                  </div>
+                  
                 </RadioGroup>
               </div>
               <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">Save Preferences</Button>
