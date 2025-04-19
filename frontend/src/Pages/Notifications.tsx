@@ -6,9 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 
 import { AlertCircle, Bell, Check, Info, Mail, MessageSquare, Phone, Search, Trash2 } from "lucide-react"
 
@@ -19,24 +17,18 @@ const notificationsData = [
     message: "Food level is below 20%. Consider refilling soon.",
     timestamp: "2025-04-03T14:30:22",
     read: false,
-    type: "warning",
-    channel: "in-app",
   },
   {
     id: 2,
     message: "Scheduled feeding completed successfully.",
     timestamp: "2025-04-03T12:15:05",
     read: true,
-    type: "info",
-    channel: "in-app",
   },
   {
     id: 3,
     message: "Camera disconnected unexpectedly.",
     timestamp: "2025-04-03T09:45:18",
     read: false,
-    type: "critical",
-    channel: "sms",
   },
 
   {
@@ -44,8 +36,6 @@ const notificationsData = [
     message: "Your pet has been fed 3 times today.",
     timestamp: "2025-03-31T20:15:00",
     read: true,
-    type: "info",
-    channel: "in-app",
   },
 
   {
@@ -53,8 +43,6 @@ const notificationsData = [
     message: "Feeder has been inactive for 24 hours.",
     timestamp: "2025-03-29T18:30:00",
     read: false,
-    type: "warning",
-    channel: "in-app",
   },
 ]
 
@@ -86,17 +74,10 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
   const [searchQuery, setSearchQuery] = useState("")
   const [dateRange, setDateRange] = useState("all")
 
-  // Notification preferences
-  const [smsAlerts, setSmsAlerts] = useState(true)
-  const [inAppNotifications, setInAppNotifications] = useState(true)
- 
 
   // Filter notifications based on current filters
   const filteredNotifications = notifications.filter((notification) => {
-    // Filter by type
-    if (filterType !== "all" && notification.channel !== filterType) {
-      return false
-    }
+  
 
     // Filter by search query
     if (searchQuery && !notification.message.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -149,11 +130,7 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
     }
   }
 
-  const handleSavePreferences = () => {
-    alert("Notification preferences saved!")
-  }
-
-
+ 
 
   return (
     <Layout currentPath="/notifications" navigateTo={navigateTo} title="Notifications">
@@ -214,66 +191,8 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
             </CardFooter>
           </Card>
 
-          {/* Notification Settings Section */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xl font-bold">Notification Preferences</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium">Notification Channels</h3>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-gray-500" />
-                    <Label htmlFor="sms-alerts" className="text-sm">
-                      SMS Alerts
-                    </Label>
-                  </div>
-                  <Switch id="sms-alerts" checked={smsAlerts} onCheckedChange={setSmsAlerts} />
-                </div>
-               
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-gray-500" />
-                    <Label htmlFor="in-app-notifications" className="text-sm">
-                      In-App Notifications
-                    </Label>
-                  </div>
-                  <Switch
-                    id="in-app-notifications"
-                    checked={inAppNotifications}
-                    onCheckedChange={setInAppNotifications}
-                  />
-                </div>
-              </div>
-
-             
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white" onClick={handleSavePreferences}>
-                Save Preferences
-              </Button>
-            </CardFooter>
-          </Card>
-
-          {/* Troubleshooting Tips Section */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xl font-bold">Notification Issues?</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-3">
-                <Info className="h-5 w-5 text-orange-500 shrink-0" />
-                <p className="text-sm">Not receiving alerts? Check your notification settings.</p>
-              </div>
-              <div className="flex gap-3">
-                <Info className="h-5 w-5 text-orange-500 shrink-0" />
-                <p className="text-sm">SMS not working? Verify your phone number.</p>
-              </div>
-              
-            </CardContent>
         
-          </Card>
+
         </div>
 
         {/* Right Column */}
@@ -295,16 +214,7 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
-                <Select value={filterType} onValueChange={setFilterType}>
-                  <SelectTrigger className="w-full md:w-[180px]">
-                    <SelectValue placeholder="Filter by type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="sms">SMS</SelectItem>
-                    <SelectItem value="in-app">In-App</SelectItem>
-                  </SelectContent>
-                </Select>
+                
                 <Select value={dateRange} onValueChange={setDateRange}>
                   <SelectTrigger className="w-full md:w-[180px]">
                     <SelectValue placeholder="Date range" />
@@ -328,15 +238,7 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
                       className={`p-4 border rounded-lg ${notification.read ? "bg-white" : "bg-orange-50"}`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className="mt-0.5">
-                          {notification.channel === "sms" ? (
-                            <Phone className="h-5 w-5 text-blue-500" />
-                          ) : notification.channel === "" ? (
-                            <Mail className="h-5 w-5 text-green-500" />
-                          ) : (
-                            <Bell className="h-5 w-5 text-orange-500" />
-                          )}
-                        </div>
+                        
                         <div className="flex-1">
                           <p className={`text-sm ${notification.read ? "text-gray-600" : "font-medium text-gray-900"}`}>
                             {notification.message}
@@ -345,21 +247,7 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
                             <span className="text-xs text-gray-500">
                               {new Date(notification.timestamp).toLocaleString()}
                             </span>
-                            <Badge
-                              className={
-                                notification.type === "critical"
-                                  ? "bg-red-100 text-red-600 border-red-200"
-                                  : notification.type === "warning"
-                                    ? "bg-yellow-100 text-yellow-600 border-yellow-200"
-                                    : "bg-blue-100 text-blue-600 border-blue-200"
-                              }
-                            >
-                              {notification.type === "critical"
-                                ? "Critical"
-                                : notification.type === "warning"
-                                  ? "Warning"
-                                  : "Info"}
-                            </Badge>
+                           
                           </div>
                         </div>
                         <div className="flex gap-1">
@@ -389,11 +277,7 @@ export default function NotificationsPage({ navigateTo }: { navigateTo: (path: s
                 )}
               </div>
             </CardContent>
-            <CardFooter>
-              <Button variant="outline" size="sm" className="w-full">
-                Load More
-              </Button>
-            </CardFooter>
+            
           </Card>
 
           {/* Critical Alerts Section */}

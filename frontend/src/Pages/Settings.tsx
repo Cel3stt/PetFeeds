@@ -171,7 +171,7 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
                 onValueChange={setActiveTab}
                 className="w-full"
               >
-                <TabsList className="flex flex-col h-auto w-full rounded-none items-stretch shadow-none">
+                <TabsList className="flex flex-col h-auto w-full rounded-fnone items-stretch shadow-none">
                   <TabsTrigger
                     value="account"
                     className="justify-start px-4 py-3  data-[state=active]:bg-orange-50 data-[state=active]:text-orange-500"
@@ -193,13 +193,7 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
                     <Utensils className="h-4 w-4 mr-2" />
                     Feeding
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="data"
-                    className="justify-start px-4 py-3 data-[state=active]:bg-orange-50 data-[state=active]:text-orange-500"
-                  >
-                    <Database className="h-4 w-4 mr-2" />
-                    Data & Storage
-                  </TabsTrigger>
+                
                  
                 </TabsList>
               </Tabs>
@@ -288,7 +282,6 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
                               handleInputChange()
                             }}
                           />
-                          <p className="text-xs text-gray-500">Used for SMS notifications and account recovery</p>
                         </div>
                       </div>
                     </div>
@@ -308,7 +301,6 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-sm font-medium">Password</h3>
-                        <p className="text-sm text-gray-500">Last changed 3 months ago</p>
                       </div>
                       <Dialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen}>
                         <DialogTrigger asChild>
@@ -378,16 +370,7 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
                     <CardDescription>Manage your account data and preferences</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Download Your Data</h3>
-                        <p className="text-sm text-gray-500">Get a copy of all your account data</p>
-                      </div>
-                      <Button variant="outline">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
-                      </Button>
-                    </div>
+                   
 
                     <Separator />
 
@@ -762,59 +745,7 @@ export default function SettingsPage({ navigateTo }: { navigateTo: (path: string
               </>
             )}
 
-            {/* Data & Storage Settings */}
-            {activeTab === "data" && (
-              <>
-               
-                <Card>
-                  <CardHeader className="bg-orange-50 p-4 m-4">
-                    <CardTitle className="font-semibold">Camera Storage</CardTitle>
-                    <CardDescription>Manage camera snapshots and recordings</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Auto-Delete Old Images</h3>
-                        <p className="text-sm text-gray-500">Automatically remove old snapshots to save space</p>
-                      </div>
-                      <Switch defaultChecked />
-                    </div>
-
-                   
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-medium">Clear All Images</h3>
-                        <p className="text-sm text-gray-500">Delete all stored images and videos</p>
-                      </div>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm">
-                            Clear
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete all images?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently delete all snapshots and recordings from your device. This action
-                              cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction className="bg-red-500 hover:bg-red-600">Delete All</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                
-              </>
-            )}
+           
 
           </div>
         </div>

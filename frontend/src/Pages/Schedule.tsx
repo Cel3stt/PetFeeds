@@ -503,20 +503,7 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Notification Method</Label>
-                <RadioGroup defaultValue="app" value={notificationMethod} onValueChange={setNotificationMethod}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="sms" id="sms" />
-                    <Label htmlFor="sms">SMS</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="app" id="app" />
-                    <Label htmlFor="app">In-App Notification</Label>
-                  </div>
-                  
-                </RadioGroup>
-              </div>
+              
               <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">Save Preferences</Button>
             </CardContent>
           </Card>

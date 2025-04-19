@@ -178,10 +178,7 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
                 <CardDescription>Complete record of all feeding events</CardDescription>
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleExportData()} className="flex items-center">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Data
-                </Button>
+                
                 <Dialog open={filterDialogOpen} onOpenChange={setFilterDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" className="flex items-center">
@@ -288,7 +285,6 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
                 />
               </div>
               <div className="flex items-center gap-2 w-full md:w-auto">
-                <Label className="whitespace-nowrap">Quick Filter:</Label>
                 <Select value={filterType} onValueChange={setFilterType}>
                   <SelectTrigger>
                     <SelectValue />
