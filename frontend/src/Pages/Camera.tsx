@@ -44,22 +44,23 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { useSnapshotStore } from "@/store/snapshotStore";
+import toast from "react-hot-toast";
 
-// Initial sample data for snapshots
-const initialSnapshots = [
-  {
-    id: 1,
-    url: "https://placehold.co/300x200",
-    timestamp: "2025-04-03 14:30:22",
-    reason: "Manual",
-  },
-  {
-    id: 2,
-    url: "https://placehold.co/300x200",
-    timestamp: "2025-04-03 12:15:05",
-    reason: "Motion Detected",
-  },
-];
+// Mapping between frontend resolutions and ESP32-CAM resolutions
+const resolutionMapping: { [key: string]: string } = {
+  "360p": "320x240", // QVGA
+  "720p": "800x600", // SVGA
+  "1080p": "1600x1200", // UXGA
+};
+
+// Reverse mapping for fetching settings from the server
+const reverseResolutionMapping: { [key: string]: string } = {
+  "160x120": "360p", // QQVGA (not used in frontend, but included for completeness)
+  "320x240": "360p", // QVGA
+  "800x600": "720p", // SVGA
+  "1600x1200": "1080p", // UXGA
+};
 
 // Sample data for camera activities
 const cameraActivities = [
@@ -89,19 +90,54 @@ const cameraActivities = [
   },
 ];
 
-// Mapping between frontend resolutions and ESP32-CAM resolutions
-const resolutionMapping: { [key: string]: string } = {
-  "360p": "320x240", // QVGA
-  "720p": "800x600", // SVGA
-  "1080p": "1600x1200", // UXGA
-};
+// Utility function to convert a data URL to a File object
+const dataURLtoFile = (dataurl: string, filename: string): File => {
+  console.log("Debug: dataURLtoFile called with dataurl:", dataurl);
+  console.log("Debug: dataURLtoFile filename:", filename);
 
-// Reverse mapping for fetching settings from the server
-const reverseResolutionMapping: { [key: string]: string } = {
-  "160x120": "360p", // QQVGA (not used in frontend, but included for completeness)
-  "320x240": "360p", // QVGA
-  "800x600": "720p", // SVGA
-  "1600x1200": "1080p", // UXGA
+  if (!dataurl) {
+    console.error("Debug: dataurl is null or undefined");
+    throw new Error("Data URL is null or undefined");
+  }
+
+  const arr = dataurl.split(",");
+  console.log("Debug: dataurl split into arr:", arr);
+
+  if (arr.length < 2) {
+    console.error(
+      "Debug: Invalid data URL format - split did not produce expected parts"
+    );
+    throw new Error("Invalid data URL format");
+  }
+
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  console.log("Debug: mimeMatch result:", mimeMatch);
+
+  if (!mimeMatch || !mimeMatch[1]) {
+    console.error("Debug: Could not extract MIME type from data URL");
+    throw new Error("Could not extract MIME type from data URL");
+  }
+
+  const mime = mimeMatch[1];
+  console.log("Debug: Extracted MIME type:", mime);
+
+  const bstr = atob(arr[1]);
+  console.log(
+    "Debug: Base64 decoded to bstr (first 50 chars):",
+    bstr.substring(0, 50)
+  );
+
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  console.log("Debug: Uint8Array created with length:", u8arr.length);
+
+  const file = new File([u8arr], filename, { type: mime });
+  console.log("Debug: File object created:", file);
+
+  return file;
 };
 
 export default function CameraPage({
@@ -117,12 +153,19 @@ export default function CameraPage({
   const [quality, setQuality] = useState(12); // Default quality
   const [zoomLevel, setZoomLevel] = useState(1);
   const [selectedImage, setSelectedImage] = useState<any>(null);
-  const [snapshots, setSnapshots] = useState(initialSnapshots);
   const [cameraIp, setCameraIp] = useState("192.168.0.108");
   const [error, setError] = useState<string | null>(null);
 
+  const { snapshots, fetchSnapshots, addSnapshot, deleteSnapshot } =
+    useSnapshotStore();
+
   const streamUrl = `http://${cameraIp}/video?res=${resolutionMapping[resolution]}`;
   const snapshotUrl = `http://${cameraIp}/snapshot?res=${resolutionMapping[resolution]}`;
+  // e.g., http://192.168.0.108/snapshot?res=800x600
+  // Fetch snapshots when the component mounts
+  useEffect(() => {
+    fetchSnapshots();
+  }, [fetchSnapshots]);
 
   // Fetch initial settings from the server
   useEffect(() => {
@@ -183,17 +226,82 @@ export default function CameraPage({
     }
   };
 
-  const handleCapture = (imageSrc: string) => {
-    const newSnapshot = {
-      id: Date.now(),
-      url: imageSrc,
-      timestamp: new Date().toISOString().replace("T", " ").substring(0, 19),
-      reason: "Manual",
-    };
-    setSnapshots([newSnapshot, ...snapshots]);
-    alert("Snapshot taken and saved to gallery!");
-  };
+  // Inside WebcamFeed
+  const handleCapture = async (imageSrc: string) => {
+    console.log("Debug: handleCapture called with imageSrc:", imageSrc);
+    if (!imageSrc) {
+      console.error("Debug: imageSrc is undefined or empty");
+      toast.error("Failed to capture snapshot: No image source provided.");
+      return;
+    }
+    try {
+      const timestamp = new Date()
+        .toISOString()
+        .replace("T", " ")
+        .substring(0, 19);
+      console.log("Debug: Generated timestamp:", timestamp);
 
+      let imageFile: File;
+
+      if (imageSrc.startsWith("data:image")) {
+        console.log("Debug: imageSrc is a data URL");
+        imageFile = dataURLtoFile(imageSrc, `snapshot-${timestamp}.jpg`);
+      } else if (imageSrc.startsWith("http")) {
+        console.log("Debug: imageSrc is a URL, fetching as blob");
+        const response = await fetch(imageSrc, {
+          mode: "cors",
+          headers: {
+            Accept: "image/jpeg",
+          },
+        });
+        if (!response.ok) {
+          console.error(
+            "Debug: Fetch failed with status:",
+            response.status,
+            response.statusText
+          );
+          throw new Error(
+            `Failed to fetch image from URL: ${response.statusText}`
+          );
+        }
+        const blob = await response.blob();
+        console.log("Debug: Fetched blob:", blob);
+        imageFile = new File([blob], `snapshot-${timestamp}.jpg`, {
+          type: blob.type,
+        });
+      } else if (imageSrc.startsWith("blob:")) {
+        console.log("Debug: imageSrc is a blob URL, fetching blob");
+        const response = await fetch(imageSrc);
+        if (!response.ok) {
+          console.error(
+            "Debug: Fetch blob failed with status:",
+            response.status,
+            response.statusText
+          );
+          throw new Error(
+            `Failed to fetch blob from URL: ${response.statusText}`
+          );
+        }
+        const blob = await response.blob();
+        console.log("Debug: Fetched blob from blob URL:", blob);
+        imageFile = new File([blob], `snapshot-${timestamp}.jpg`, {
+          type: blob.type,
+        });
+      } else {
+        console.error("Debug: imageSrc is invalid or not provided:", imageSrc);
+        throw new Error(
+          "Invalid image source: must be a data URL, blob URL, or a valid URL"
+        );
+      }
+
+      console.log("Debug: imageFile created:", imageFile);
+      await addSnapshot(imageFile, timestamp, "Manual");
+      console.log("Debug: Snapshot added successfully");
+    } catch (error: any) {
+      console.error("Debug: Error in handleCapture:", error);
+      toast.error(`Failed to capture snapshot: ${error.message}`);
+    }
+  };
   const handleViewImage = (image: any) => {
     setSelectedImage(image);
   };
@@ -204,7 +312,7 @@ export default function CameraPage({
 
   const handleDeleteImage = () => {
     if (selectedImage) {
-      setSnapshots(snapshots.filter((snap) => snap.id !== selectedImage.id));
+      deleteSnapshot(selectedImage._id);
       setSelectedImage(null);
     }
   };
@@ -383,13 +491,16 @@ export default function CameraPage({
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {snapshots.slice(0, 6).map((snapshot) => (
                   <div
-                    key={snapshot.id}
+                    key={snapshot._id}
                     className="relative cursor-pointer rounded-md overflow-hidden shadow-sm border border-gray-100"
                     onClick={() => handleViewImage(snapshot)}
                   >
                     <img
-                      src={snapshot.url || "/placeholder.svg"}
-                      alt={`Snapshot ${snapshot.id}`}
+                      src={
+                        `http://localhost:3000${snapshot.url}` ||
+                        "/placeholder.svg"
+                      }
+                      alt={`Snapshot ${snapshot._id}`}
                       className="w-full h-32 object-cover"
                     />
                     <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate">
@@ -489,8 +600,11 @@ export default function CameraPage({
             <div className="space-y-4">
               <div className="aspect-video bg-gray-100 rounded-md overflow-hidden">
                 <img
-                  src={selectedImage.url || "/placeholder.svg"}
-                  alt={`Snapshot ${selectedImage.id}`}
+                  src={
+                    `http://localhost:3000${selectedImage.url}` ||
+                    "/placeholder.svg"
+                  }
+                  alt={`Snapshot ${selectedImage._id}`}
                   className="w-full h-full object-cover"
                 />
               </div>
