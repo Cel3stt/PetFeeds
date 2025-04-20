@@ -44,7 +44,6 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
 
 // Initial sample data for snapshots
 const initialSnapshots = [
@@ -184,31 +183,6 @@ export default function CameraPage({
     }
   };
 
-  // Update quality on the server when the user changes it
-  const handleQualityChange = async (newQuality: number) => {
-    setQuality(newQuality);
-    setError(null);
-
-    try {
-      const response = await fetch(`http://${cameraIp}/settings/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ quality: newQuality }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update settings");
-      }
-      const result = await response.json();
-      console.log(result.status); // "Settings updated"
-    } catch (err: any) {
-      setError("Failed to update quality on the camera.");
-      console.error(err);
-    }
-  };
-
   const handleCapture = (imageSrc: string) => {
     const newSnapshot = {
       id: Date.now(),
@@ -246,54 +220,6 @@ export default function CameraPage({
       <div className="grid gap-6 md:grid-cols-3">
         {/* Left Column - Live Feed and Controls */}
         <div className="md:col-span-2 space-y-6">
-          {/* Camera IP Input and Settings */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xl font-bold">
-                Camera Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Camera IP */}
-                <div className="flex items-center gap-4">
-                  <Label htmlFor="camera-ip">ESP32-CAM IP Address</Label>
-                  <Input
-                    id="camera-ip"
-                    value={cameraIp}
-                    onChange={(e) => setCameraIp(e.target.value)}
-                    placeholder="e.g., 192.168.0.108"
-                    className="w-[200px]"
-                  />
-                </div>
-                {/* Quality Slider */}
-                <div className="space-y-2">
-                  <Label htmlFor="quality">
-                    JPEG Quality (4-63, lower is better)
-                  </Label>
-                  <div className="flex items-center gap-4">
-                    <Slider
-                      id="quality"
-                      value={[quality]}
-                      min={4}
-                      max={63}
-                      step={1}
-                      className="flex-1"
-                      onValueChange={(value) => handleQualityChange(value[0])}
-                    />
-                    <span className="text-sm text-gray-500">{quality}</span>
-                  </div>
-                </div>
-                {error && (
-                  <div className="flex gap-3 mt-4 text-red-500">
-                    <AlertCircle className="h-5 w-5 shrink-0" />
-                    <p className="text-sm">{error}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Live Feed Card */}
           <Card>
             <CardHeader className="pb-2">
@@ -533,8 +459,7 @@ export default function CameraPage({
                 <div className="flex gap-3">
                   <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
                   <p className="text-sm">
-                    Poor video quality? Adjust resolution or quality in
-                    settings.
+                    Poor video quality? Adjust resolution in settings.
                   </p>
                 </div>
               </div>
