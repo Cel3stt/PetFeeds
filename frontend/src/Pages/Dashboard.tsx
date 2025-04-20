@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Layout } from "@/components/layout"
 import { StatusCard } from "@/components/status-card"
 import { CircularProgress } from "@/components/circular-progress"
@@ -9,11 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts"
 import { CircleIcon, Clock, Utensils } from "lucide-react"
+import { toast } from "react-hot-toast"
 
-// ESP32 IP address
-const ESP32_IP = "192.168.0.109"; // Your ESP32's IP address
+const ESP32_IP = "192.168.0.100";
 
-// Sample data for the monthly feeding chart
 const monthlyFeedingData = [
   { name: "Jan", grams: 48000 },
   { name: "Feb", grams: 17000 },
@@ -28,72 +27,170 @@ const monthlyFeedingData = [
   { name: "Dec", grams: 37000 },
 ]
 
-// Sample data for recent activity
-const recentActivity = [
-  { id: 1, date: "2025-04-03", time: "12:30 PM", method: "Scheduled" },
-  { id: 2, date: "2025-04-03", time: "12:30 PM", method: "Scheduled" },
-  { id: 3, date: "2025-04-03", time: "12:30 PM", method: "Manual" },
-  { id: 4, date: "2025-04-03", time: "12:30 PM", method: "Scheduled" },
-]
+interface Feed {
+  _id: string;
+  date: string;
+  time: string;
+  portion: string;
+  method: "Manual" | "Scheduled" | "Manual-Button";
+  status: "Successful" | "Failed";
+}
 
 interface DashboardProps {
   navigateTo: (path: string) => void
 }
 
 export default function Dashboard({ navigateTo }: DashboardProps) {
-  const [foodLevel, setFoodLevel] = useState(75) // Initial food level percentage
+  const [foodLevel, setFoodLevel] = useState(75)
+  const [distance, setDistance] = useState<number | null>(null)
+  const [lastUpdate, setLastUpdate] = useState<string>("")
+  const [error, setError] = useState<string | null>(null)
+  const [recentFeeds, setRecentFeeds] = useState<Feed[]>([])
+
+  useEffect(() => {
+    const fetchFoodLevel = async () => {
+      try {
+        const response = await fetch(`http://${ESP32_IP}/foodLevel`, { timeout: 5000 });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch food level: ${response.status}`);
+        }
+        const data = await response.json();
+        setFoodLevel(Math.round(data.level));
+        setDistance(data.distance);
+        setLastUpdate(new Date().toLocaleTimeString());
+        setError(null);
+      } catch (error) {
+        console.error('Error fetching food level:', error);
+        setError('Failed to update food level');
+      }
+    };
+
+    fetchFoodLevel();
+    const interval = setInterval(fetchFoodLevel, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchRecentFeeds = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/feed-log');
+      if (!response.ok) throw new Error('Failed to fetch feed logs');
+      const data = await response.json();
+      setRecentFeeds(data.slice(0, 5));
+    } catch (error) {
+      console.error('Failed to fetch recent feeds:', error);
+      toast.error('Failed to load recent feeds');
+    }
+  };
+
+  useEffect(() => {
+    fetchRecentFeeds();
+    const interval = setInterval(fetchRecentFeeds, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleFeedNow = async () => {
+    const STANDARD_PORTION = 50;
     try {
-      const response = await fetch(`http://${ESP32_IP}/feed`);
-      if (!response.ok) {
-        throw new Error("Failed to send feed command");
+      console.log(`Sending feed command to ESP32 at ${ESP32_IP}`);
+      const feedResponse = await fetch(`http://${ESP32_IP}/feed?portion=${STANDARD_PORTION}`, {
+        method: 'GET',
+        headers: { 'Accept': 'text/plain' },
+      });
+
+      if (!feedResponse.ok) {
+        const errorText = await feedResponse.text();
+        throw new Error(`Failed to send feed command: ${errorText}`);
       }
-      const text = await response.text();
-      console.log(text); // Should log "Feed completed"
-      setFoodLevel((prevLevel) => Math.max(0, prevLevel - 5)); // Decrease food level by 5%
-      alert("Feeding now!");
+
+      const feedText = await feedResponse.text();
+      console.log('ESP32 response:', feedText);
+
+      const now = new Date();
+      const logResponse = await fetch("http://localhost:3000/api/feed-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: now.toISOString().split('T')[0],
+          time: now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+          portion: `${STANDARD_PORTION}g`,
+          method: "Manual",
+          status: "Successful"
+        })
+      });
+
+      if (!logResponse.ok) {
+        throw new Error("Failed to log feed");
+      }
+
+      toast.success(`Manual feeding completed (${STANDARD_PORTION}g)!`);
+      fetchRecentFeeds();
     } catch (error) {
-      console.error("Error sending feed command:", error);
-      alert("Failed to feed. Ensure the ESP32 is connected and on the same network.");
+      console.error("Error during feed:", error);
+      toast.error(`Failed to feed: ${error.message}`);
+      try {
+        const now = new Date();
+        await fetch("http://localhost:3000/api/feed-log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: now.toISOString().split('T')[0],
+            time: now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+            portion: `${STANDARD_PORTION}g`,
+            method: "Manual",
+            status: "Failed"
+          })
+        });
+      } catch (logError) {
+        console.error("Failed to log failed attempt:", logError);
+      }
     }
-  }
+  };
 
   return (
-    <Layout
-      currentPath="/"
-      navigateTo={navigateTo}
-      title="Dashboard"
-    >
-      {/* Status Cards */}
+    <Layout currentPath="/" navigateTo={navigateTo} title="Dashboard">
       <div className="flex items-end justify-end gap-4 mb-2">
         <Button className="bg-orange-500 hover:bg-orange-600 text-white" onClick={handleFeedNow}>
           Feed now
         </Button>
       </div>
       <div className="grid gap-6 md:grid-cols-3 mb-8">
-        {/* Food Level Card */}
         <StatusCard
           icon={<CircleIcon className="h-5 w-5" />}
           title="Food Level"
           value={
             <div className="flex items-center">
-              <CircularProgress value={foodLevel} size={90} strokeWidth={8} />
-              <span className="ml-4 text-xl font-semibold">{foodLevel}%</span>
+              <CircularProgress 
+                value={foodLevel} 
+                size={90} 
+                strokeWidth={8}
+                className={foodLevel <= 20 ? "text-red-500" : foodLevel <= 60 ? "text-yellow-500" : "text-green-500"}
+              />
+              <div className="ml-4">
+                <span className={`text-xl font-semibold ${foodLevel <= 20 ? "text-red-500" : foodLevel <= 60 ? "text-yellow-500" : "text-green-500"}`}>
+                  {foodLevel}%
+                </span>
+                {distance !== null && (
+                  <p className="text-sm text-gray-500">Distance: {distance.toFixed(1)}cm</p>
+                )}
+                {error ? (
+                  <p className="text-sm text-red-500">{error}</p>
+                ) : (
+                  <p className="text-sm text-gray-500">Updated: {lastUpdate}</p>
+                )}
+              </div>
             </div>
           }
-          subtitle={`Last feeding: Today, 12:30 PM`}
+          subtitle={
+            foodLevel < 20 ? "Warning: Food level is low!" :
+            foodLevel <= 60 ? "Food level is moderate" : "Food level is good"
+          }
         />
-
-        {/* Next Scheduled Feeding Card */}
         <StatusCard
           icon={<Clock className="h-5 w-5" />}
           title="Next Scheduled Feeding"
           value="6:00 PM"
           subtitle="Today"
         />
-
-        {/* Total Food Dispensed Card */}
         <StatusCard
           icon={<Utensils className="h-5 w-5" />}
           title="Total food dispensed today"
@@ -101,10 +198,7 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
           subtitle="Today"
         />
       </div>
-
-      {/* Charts and Activity Log */}
       <div className="grid gap-6 md:grid-cols-3">
-        {/* Monthly Feeding Report */}
         <Card className="md:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-xl font-bold">Monthly Feeding Report</CardTitle>
@@ -123,8 +217,6 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
             </div>
           </CardContent>
         </Card>
-
-        {/* Recent Activity Log */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-xl font-bold">Recent Activity Log</CardTitle>
@@ -132,31 +224,39 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-                >
+              {recentFeeds.map((feed) => (
+                <div key={feed._id} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
                   <div>
-                    <div className="text-sm font-medium">{activity.date}</div>
-                    <div className="text-sm text-gray-500">{activity.time}</div>
+                    <div className="text-sm font-medium">{feed.date}</div>
+                    <div className="text-sm text-gray-500">{feed.time}</div>
+                    <div className="text-xs text-gray-400">{feed.portion}</div>
                   </div>
-                  <Badge
-                    variant={activity.method === "Scheduled" ? "outline" : "secondary"}
-                    className={
-                      activity.method === "Scheduled"
-                        ? "bg-orange-100 text-orange-500 hover:bg-orange-200 border-orange-200"
-                        : "bg-gray-100 text-gray-700"
-                    }
-                  >
-                    {activity.method}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      variant={feed.method === "Scheduled" ? "outline" : "secondary"}
+                      className={
+                        feed.method === "Scheduled" ? "bg-orange-100 text-orange-500 hover:bg-orange-200 border-orange-200" :
+                        "bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200"
+                      }
+                    >
+                      {feed.method}
+                    </Badge>
+                    <Badge
+                      variant={feed.status === "Successful" ? "outline" : "destructive"}
+                      className={
+                        feed.status === "Successful" ? "bg-green-100 text-green-600 hover:bg-green-200 border-green-200" :
+                        "bg-red-100 text-red-600 hover:bg-red-200 border-red-200"
+                      }
+                    >
+                      {feed.status}
+                    </Badge>
+                  </div>
                 </div>
               ))}
             </div>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" size="sm" className="w-full">
+            <Button variant="outline" size="sm" className="w-full" onClick={() => navigateTo("/history")}>
               View All Activity
             </Button>
           </CardFooter>

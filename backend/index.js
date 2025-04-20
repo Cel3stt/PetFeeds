@@ -11,6 +11,7 @@ import FeedLog from './models/feedlog.model.js';
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
+const ESP32_IP = '192.168.0.100'; // Static IP
 
 app.use(cors());
 app.use(express.json());
@@ -43,12 +44,17 @@ const checkSchedules = async () => {
           }
 
           // Send feed command to ESP32
-          const esp32Response = await fetch(`http://192.168.0.109/feed?portion=${portionValue}`, {
-            timeout: 10000 // 10 second timeout
+          const esp32Response = await fetch(`http://${ESP32_IP}/feed?portion=${portionValue}`, {
+            method: 'GET',
+            headers: {
+              'Accept': 'text/plain',
+              'Content-Type': 'application/json'
+            }
           });
 
           if (!esp32Response.ok) {
-            throw new Error(`ESP32 responded with status: ${esp32Response.status}`);
+            const errorText = await esp32Response.text();
+            throw new Error(`ESP32 responded with error: ${esp32Response.status} - ${errorText}`);
           }
 
           const responseText = await esp32Response.text();
@@ -59,6 +65,7 @@ const checkSchedules = async () => {
             date: currentDate,
             time: schedule.time,
             portion: schedule.portion,
+            method: 'Scheduled',
             status: 'Successful',
             notes: `Automated feed: ${responseText}`
           });

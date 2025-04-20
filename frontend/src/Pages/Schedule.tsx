@@ -27,10 +27,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import toast from "react-hot-toast";
 
-// ESP32 IP address
-const ESP32_IP = "192.168.0.109";
+const ESP32_IP = "192.168.0.100";
 
-// Days of the week for checkboxes
 const daysOfWeek = [
   { id: "mon", label: "Mon" },
   { id: "tue", label: "Tue" },
@@ -41,7 +39,6 @@ const daysOfWeek = [
   { id: "sun", label: "Sun" },
 ];
 
-// Interfaces for TypeScript (fixes 'any' and type mismatches)
 interface Schedule {
   _id?: string;
   time: string;
@@ -58,9 +55,9 @@ interface Feed {
   time: string;
   portion: string;
   status: "Successful" | "Failed";
+  method: "Manual" | "Scheduled" | "Manual-Button";
 }
 
-// Form schema for validation
 const scheduleSchema = z.object({
   time: z.string().nonempty("Time is required"),
   portion: z
@@ -73,7 +70,6 @@ const scheduleSchema = z.object({
 
 type ScheduleFormData = z.infer<typeof scheduleSchema>;
 
-// Define props type for the component
 interface ScheduleProps {
   navigateTo: (path: string) => void;
 }
@@ -84,21 +80,17 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState<string | null>(null);
-  const [currentSchedule, setCurrentSchedule] = useState<Schedule | null>(null); // Fix: Use Schedule type
+  const [currentSchedule, setCurrentSchedule] = useState<Schedule | null>(null);
   const [automatedFeeding, setAutomatedFeeding] = useState(true);
   const [manualReminders, setManualReminders] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "paused">("all"); // Fix: Explicit union type
-  const [sortBy, setSortBy] = useState<"time" | "frequency">("time"); // Fix: Explicit union type
-  const [recentFeeds, setRecentFeeds] = useState<Feed[]>([]); // Fix: Use Feed type
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "paused">("all");
+  const [sortBy, setSortBy] = useState<"time" | "frequency">("time");
+  const [recentFeeds, setRecentFeeds] = useState<Feed[]>([]);
 
-  // State for Add Dialog
   const [addDays, setAddDays] = useState<string[]>([]);
-
-  // State for Edit Dialog
   const [editDays, setEditDays] = useState<string[]>([]);
   const [editStatus, setEditStatus] = useState<"Active" | "Paused">("Active");
 
-  // Form hooks
   const addForm = useForm<ScheduleFormData>({
     resolver: zodResolver(scheduleSchema),
     defaultValues: { time: "", portion: "", frequency: "daily", notes: "" },
@@ -111,26 +103,23 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
     mode: "onChange",
   });
 
-  // Fetch schedules and recent feeds on mount
   useEffect(() => {
     fetchSchedules();
     fetchRecentFeeds();
   }, [fetchSchedules]);
 
-  // Fetch recent automated feeds
   const fetchRecentFeeds = async () => {
     try {
       const response = await fetch("http://localhost:3000/api/feed-log");
       if (!response.ok) throw new Error("Failed to fetch feed logs");
       const data: Feed[] = await response.json();
-      setRecentFeeds(data.slice(0, 5)); // Limit to 5 most recent
+      setRecentFeeds(data.slice(0, 5));
     } catch (error) {
       console.error("Failed to fetch recent feeds:", error);
       toast.error("Failed to load recent feeds.");
     }
   };
 
-  // Set initial edit dialog state
   useEffect(() => {
     if (currentSchedule) {
       setEditStatus(currentSchedule.status);
@@ -144,7 +133,6 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
     }
   }, [currentSchedule, editForm]);
 
-  // Filter and sort schedules
   const filteredSchedules = schedules.filter((schedule) =>
     filterStatus === "all" ? true : schedule.status.toLowerCase() === filterStatus.toLowerCase()
   );
@@ -152,7 +140,6 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
     sortBy === "time" ? a.time.localeCompare(b.time) : a.frequency.localeCompare(b.frequency)
   );
 
-  // Handle adding a new schedule
   const handleAddSchedule = async (data: ScheduleFormData) => {
     const days =
       data.frequency === "daily" ? daysOfWeek.map((day) => day.label) : data.frequency === "specific" ? addDays : [];
@@ -168,7 +155,6 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
     }
   };
 
-  // Handle editing a schedule
   const handleEditSchedule = (schedule: Schedule) => {
     setCurrentSchedule(schedule);
     setEditDialogOpen(true);
@@ -189,7 +175,6 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
     }
   };
 
-  // Handle deleting a schedule
   const confirmDeleteSchedule = (id: string) => {
     setScheduleToDelete(id);
     setDeleteDialogOpen(true);
@@ -209,37 +194,51 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
     }
   };
 
-  // Handle checkbox changes
   const handleAddDayChange = (day: string, checked: boolean) =>
     setAddDays((prev) => (checked ? [...prev, day] : prev.filter((d) => d !== day)));
   const handleEditDayChange = (day: string, checked: boolean) =>
     setEditDays((prev) => (checked ? [...prev, day] : prev.filter((d) => d !== day)));
 
-  // Handle manual feed now with logging
   const handleFeedNow = async () => {
+    const STANDARD_PORTION = 50;
     try {
-      const response = await fetch(`http://${ESP32_IP}/feed`);
+      const response = await fetch(`http://${ESP32_IP}/feed?portion=${STANDARD_PORTION}`);
       if (!response.ok) {
-        throw new Error("Failed to send feed command");
+        throw new Error(`Failed to send feed command: ${response.status}`);
       }
       const text = await response.text();
       console.log(text);
-      // Log manual feed to backend
       await fetch("http://localhost:3000/api/feed-log", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           date: new Date().toISOString().split("T")[0],
           time: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
-          portion: "100g", // Default for manual feed
+          portion: `${STANDARD_PORTION}g`,
+          method: "Manual",
           status: "Successful",
         }),
       });
-      toast.success("Feeding now!");
-      fetchRecentFeeds(); // Refresh recent feeds
+      toast.success(`Manual feeding completed (${STANDARD_PORTION}g)!`);
+      fetchRecentFeeds();
     } catch (error) {
       console.error("Error sending feed command:", error);
       toast.error("Failed to feed. Ensure the ESP32 is connected and on the same network.");
+      try {
+        await fetch("http://localhost:3000/api/feed-log", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date: new Date().toISOString().split("T")[0],
+            time: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
+            portion: `${STANDARD_PORTION}g`,
+            method: "Manual",
+            status: "Failed",
+          }),
+        });
+      } catch (logError) {
+        console.error("Failed to log failed attempt:", logError);
+      }
     }
   };
 
@@ -252,7 +251,6 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
       onFeedNow={handleFeedNow}
     >
       <div className="grid gap-6 md:grid-cols-3">
-        {/* Left Panel - Schedule Overview */}
         <div className="md:col-span-2">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -467,8 +465,6 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
               )}
             </CardContent>
           </Card>
-
-          {/* Recent Automated Feeds */}
           <Card className="mt-6">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Recent Automated Feeds</CardTitle>
@@ -518,8 +514,6 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
             </CardFooter>
           </Card>
         </div>
-
-        {/* Right Panel - Settings and Tips */}
         <div className="space-y-6">
           <Card>
             <CardHeader className="pb-2">
@@ -536,7 +530,6 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
               </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Manual Feeding Reminders</CardTitle>
@@ -564,10 +557,9 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
                   </SelectContent>
                 </Select>
               </div>
-              <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">Save Preferences</Button>
+              <Button className="w-full bg-orange-500 hover:bg-orange- visuals600 text-white">Save Preferences</Button>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Schedule Optimization Tips</CardTitle>
@@ -583,9 +575,7 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
               </div>
               <div className="flex gap-2">
                 <Info className="h-5 w-5 text-orange-500 shrink-0" />
-                <p className="text-sm">
-                  For cats, multiple small meals throughout the day may be better than fewer large meals.
-                </p>
+                <p className="text-sm">For cats, multiple small meals throughout the day may be better than fewer large meals.</p>
               </div>
               <div className="flex gap-2">
                 <Info className="h-5 w-5 text-orange-500 shrink-0" />
@@ -595,8 +585,6 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
           </Card>
         </div>
       </div>
-
-      {/* Edit Schedule Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <form onSubmit={editForm.handleSubmit(handleEditScheduleSubmit)}>
@@ -728,8 +716,6 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
