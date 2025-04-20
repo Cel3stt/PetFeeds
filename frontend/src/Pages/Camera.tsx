@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   AlertCircle,
   ChevronDown,
@@ -90,6 +90,21 @@ const cameraActivities = [
   },
 ];
 
+// Mapping between frontend resolutions and ESP32-CAM resolutions
+const resolutionMapping: { [key: string]: string } = {
+  "360p": "320x240", // QVGA
+  "720p": "800x600", // SVGA
+  "1080p": "1600x1200", // UXGA
+};
+
+// Reverse mapping for fetching settings from the server
+const reverseResolutionMapping: { [key: string]: string } = {
+  "160x120": "360p", // QQVGA (not used in frontend, but included for completeness)
+  "320x240": "360p", // QVGA
+  "800x600": "720p", // SVGA
+  "1600x1200": "1080p", // UXGA
+};
+
 export default function CameraPage({
   navigateTo,
 }: {
@@ -99,15 +114,100 @@ export default function CameraPage({
   const [nightVision, setNightVision] = useState(false);
   const [motionDetection, setMotionDetection] = useState(true);
   const [notifyOnMotion, setNotifyOnMotion] = useState(true);
-  const [resolution, setResolution] = useState("720p");
+  const [resolution, setResolution] = useState("720p"); // Default to 720p
+  const [quality, setQuality] = useState(12); // Default quality
   const [zoomLevel, setZoomLevel] = useState(1);
   const [selectedImage, setSelectedImage] = useState<any>(null);
   const [snapshots, setSnapshots] = useState(initialSnapshots);
   const [cameraIp, setCameraIp] = useState("192.168.0.108");
+  const [error, setError] = useState<string | null>(null);
 
-  const streamUrl = `http://${cameraIp}/video?res=${resolution}`; // Use /video for MJPEG
-  // const streamUrl = `http://${cameraIp}/snapshot?res=${resolution}`; // Uncomment for refreshing image approach
-  const snapshotUrl = `http://${cameraIp}/snapshot?res=${resolution}`;
+  const streamUrl = `http://${cameraIp}/video?res=${resolutionMapping[resolution]}`;
+  const snapshotUrl = `http://${cameraIp}/snapshot?res=${resolutionMapping[resolution]}`;
+
+  // Fetch initial settings from the server
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch(`http://${cameraIp}/settings`, {
+          headers: {
+            Accept: "application/json",
+          },
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch settings");
+        }
+        const settings = await response.json();
+        const serverResolution = settings.resolution || "320x240";
+        const mappedResolution =
+          reverseResolutionMapping[serverResolution] || "720p";
+        setResolution(mappedResolution);
+        const serverQuality = parseInt(settings.quality, 10);
+        if (serverQuality >= 4 && serverQuality <= 63) {
+          setQuality(serverQuality);
+        } else {
+          setQuality(12); // Fallback to default if out of range
+        }
+        setError(null);
+      } catch (err: any) {
+        setError("Failed to load camera settings. Using default values.");
+        console.error(err);
+      }
+    };
+
+    fetchSettings();
+  }, [cameraIp]); // Re-fetch if cameraIp changes
+
+  // Update resolution on the server when the user changes it
+  const handleResolutionChange = async (newResolution: string) => {
+    setResolution(newResolution);
+    setError(null);
+
+    try {
+      const serverResolution = resolutionMapping[newResolution];
+      const response = await fetch(`http://${cameraIp}/settings/update`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ resolution: serverResolution }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update settings");
+      }
+      const result = await response.json();
+      console.log(result.status); // "Settings updated"
+    } catch (err: any) {
+      setError("Failed to update resolution on the camera.");
+      console.error(err);
+    }
+  };
+
+  // Update quality on the server when the user changes it
+  const handleQualityChange = async (newQuality: number) => {
+    setQuality(newQuality);
+    setError(null);
+
+    try {
+      const response = await fetch(`http://${cameraIp}/settings/update`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ quality: newQuality }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update settings");
+      }
+      const result = await response.json();
+      console.log(result.status); // "Settings updated"
+    } catch (err: any) {
+      setError("Failed to update quality on the camera.");
+      console.error(err);
+    }
+  };
 
   const handleCapture = (imageSrc: string) => {
     const newSnapshot = {
@@ -146,7 +246,7 @@ export default function CameraPage({
       <div className="grid gap-6 md:grid-cols-3">
         {/* Left Column - Live Feed and Controls */}
         <div className="md:col-span-2 space-y-6">
-          {/* Camera IP Input */}
+          {/* Camera IP Input and Settings */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-xl font-bold">
@@ -154,15 +254,42 @@ export default function CameraPage({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-4">
-                <Label htmlFor="camera-ip">ESP32-CAM IP Address</Label>
-                <Input
-                  id="camera-ip"
-                  value={cameraIp}
-                  onChange={(e) => setCameraIp(e.target.value)}
-                  placeholder="e.g., 192.168.0.108"
-                  className="w-[200px]"
-                />
+              <div className="space-y-4">
+                {/* Camera IP */}
+                <div className="flex items-center gap-4">
+                  <Label htmlFor="camera-ip">ESP32-CAM IP Address</Label>
+                  <Input
+                    id="camera-ip"
+                    value={cameraIp}
+                    onChange={(e) => setCameraIp(e.target.value)}
+                    placeholder="e.g., 192.168.0.108"
+                    className="w-[200px]"
+                  />
+                </div>
+                {/* Quality Slider */}
+                <div className="space-y-2">
+                  <Label htmlFor="quality">
+                    JPEG Quality (4-63, lower is better)
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    <Slider
+                      id="quality"
+                      value={[quality]}
+                      min={4}
+                      max={63}
+                      step={1}
+                      className="flex-1"
+                      onValueChange={(value) => handleQualityChange(value[0])}
+                    />
+                    <span className="text-sm text-gray-500">{quality}</span>
+                  </div>
+                </div>
+                {error && (
+                  <div className="flex gap-3 mt-4 text-red-500">
+                    <AlertCircle className="h-5 w-5 shrink-0" />
+                    <p className="text-sm">{error}</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -182,7 +309,7 @@ export default function CameraPage({
                   streamUrl={streamUrl}
                   snapshotUrl={snapshotUrl}
                   zoomLevel={zoomLevel}
-                  resolution={resolution}
+                  resolution={resolutionMapping[resolution]}
                 />
               ) : (
                 <div className="relative aspect-video bg-gray-900 flex items-center justify-center rounded-md overflow-hidden">
@@ -217,7 +344,7 @@ export default function CameraPage({
                   onCheckedChange={setCameraOn}
                 />
               </div>
-              <Select value={resolution} onValueChange={setResolution}>
+              <Select value={resolution} onValueChange={handleResolutionChange}>
                 <SelectTrigger className="w-[120px]">
                   <SelectValue placeholder="Resolution" />
                 </SelectTrigger>
@@ -406,8 +533,8 @@ export default function CameraPage({
                 <div className="flex gap-3">
                   <AlertCircle className="h-5 w-5 text-orange-500 shrink-0" />
                   <p className="text-sm">
-                    Poor video quality? Adjust resolution in settings or check
-                    your internet speed.
+                    Poor video quality? Adjust resolution or quality in
+                    settings.
                   </p>
                 </div>
               </div>
