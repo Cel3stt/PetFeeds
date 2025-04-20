@@ -48,12 +48,10 @@ const sampleNotifications: Notification[] = [
 
 interface HeaderProps {
   title: string
-  showFeedNowButton?: boolean
-  onFeedNow?: () => void
   navigateTo: (path: string) => void
 }
 
-export function Header({ title, showFeedNowButton = false, onFeedNow, navigateTo }: HeaderProps) {
+export function Header({ title,  navigateTo }: HeaderProps) {
   const [notifications, setNotifications] = useState(sampleNotifications)
   const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false)
   const [isAvatarDropdownOpen, setIsAvatarDropdownOpen] = useState(false)
@@ -92,12 +90,7 @@ export function Header({ title, showFeedNowButton = false, onFeedNow, navigateTo
     <header className="bg-white py-4 px-6 flex items-center justify-between border-b border-gray-100 relative z-50">
       <h1 className="text-2xl font-bold text-gray-800">{title}</h1>
       <div className="flex items-center gap-4">
-        {showFeedNowButton && (
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white" onClick={onFeedNow}>
-            Feed now
-          </Button>
-        )}
-
+       
         {/* Notification Dropdown */}
         <div className="relative">
           <Button

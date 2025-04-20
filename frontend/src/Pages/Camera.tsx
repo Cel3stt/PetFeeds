@@ -32,6 +32,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 
+// ESP32 IP address
+const ESP32_IP = "192.168.0.109"; // Replace with your ESP32's IP address
+
 // Initial sample data for snapshots
 const initialSnapshots = [
   { id: 1, url: "https://placehold.co/300x200", timestamp: "2025-04-03 14:30:22", reason: "Manual" },
@@ -55,6 +58,8 @@ export default function CameraPage({ navigateTo }: { navigateTo: (path: string) 
   const [zoomLevel, setZoomLevel] = useState(1)
   const [selectedImage, setSelectedImage] = useState<any>(null)
   const [snapshots, setSnapshots] = useState(initialSnapshots)
+  const [panAngle, setPanAngle] = useState(90) // Start at center
+  const [tiltAngle, setTiltAngle] = useState(90) // Start at center
 
   const handleCapture = (imageSrc: string) => {
     const newSnapshot = {
@@ -80,6 +85,44 @@ export default function CameraPage({ navigateTo }: { navigateTo: (path: string) 
       setSnapshots(snapshots.filter((snap) => snap.id !== selectedImage.id))
       setSelectedImage(null)
     }
+  }
+
+  const sendServoCommand = async (endpoint: string, angle: number) => {
+    try {
+      const response = await fetch(`http://${ESP32_IP}/${endpoint}?angle=${angle}`);
+      if (!response.ok) {
+        throw new Error("Failed to send command");
+      }
+      const text = await response.text();
+      console.log(text);
+    } catch (error) {
+      console.error("Error sending servo command:", error);
+      alert("Failed to control camera. Ensure the ESP32 is connected and on the same network.");
+    }
+  }
+
+  const handlePanLeft = () => {
+    const newAngle = Math.max(0, panAngle - 5);
+    setPanAngle(newAngle);
+    sendServoCommand("pan", newAngle);
+  }
+
+  const handlePanRight = () => {
+    const newAngle = Math.min(180, panAngle + 5);
+    setPanAngle(newAngle);
+    sendServoCommand("pan", newAngle);
+  }
+
+  const handleTiltUp = () => {
+    const newAngle = Math.min(180, tiltAngle + 5);
+    setTiltAngle(newAngle);
+    sendServoCommand("tilt", newAngle);
+  }
+
+  const handleTiltDown = () => {
+    const newAngle = Math.max(0, tiltAngle - 5);
+    setTiltAngle(newAngle);
+    sendServoCommand("tilt", newAngle);
   }
 
   return (
@@ -188,21 +231,21 @@ export default function CameraPage({ navigateTo }: { navigateTo: (path: string) 
                   <h3 className="text-sm font-medium">Pan & Tilt</h3>
                   <div className="grid grid-cols-3 gap-2 justify-items-center">
                     <div></div>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" onClick={handleTiltUp}>
                       <ChevronUp className="h-4 w-4" />
                     </Button>
                     <div></div>
 
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" onClick={handlePanLeft}>
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <div className="w-9 h-9 rounded-full bg-gray-100"></div>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" onClick={handlePanRight}>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
 
                     <div></div>
-                    <Button variant="outline" size="icon">
+                    <Button variant="outline" size="icon" onClick={handleTiltDown}>
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                     <div></div>
@@ -211,8 +254,6 @@ export default function CameraPage({ navigateTo }: { navigateTo: (path: string) 
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-               
-
                 {/* Rotate Camera */}
                 <div className="flex items-center justify-between">
                   <div>
@@ -248,7 +289,7 @@ export default function CameraPage({ navigateTo }: { navigateTo: (path: string) 
                       className="w-full h-32 object-cover"
                     />
                     <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate">
-                      {new Date(snapshot.timestamp).toLocaleTimeString()}
+                      {new Date(snapshot.timestamp).toLocaleString()}
                     </div>
                   </div>
                 ))}
@@ -264,8 +305,6 @@ export default function CameraPage({ navigateTo }: { navigateTo: (path: string) 
 
         {/* Right Column - Settings and Activity */}
         <div className="space-y-6">
-         
-
           {/* Activity Timeline */}
           <Card>
             <CardHeader className="pb-2">
@@ -307,7 +346,6 @@ export default function CameraPage({ navigateTo }: { navigateTo: (path: string) 
                     Poor video quality? Adjust resolution in settings or check your internet speed.
                   </p>
                 </div>
-                
               </div>
             </CardContent>
             <CardFooter>
@@ -358,4 +396,3 @@ export default function CameraPage({ navigateTo }: { navigateTo: (path: string) 
     </Layout>
   )
 }
-

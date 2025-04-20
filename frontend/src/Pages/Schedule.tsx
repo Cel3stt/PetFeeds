@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Info, Plus, Trash2, Settings, CalendarX } from "lucide-react";
 import { Layout } from "@/components/layout";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";  
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -27,6 +26,9 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import toast from "react-hot-toast";
+
+// ESP32 IP address
+const ESP32_IP = "192.168.0.109";
 
 // Days of the week for checkboxes
 const daysOfWeek = [
@@ -39,14 +41,24 @@ const daysOfWeek = [
   { id: "sun", label: "Sun" },
 ];
 
-// Sample data for recent automated feeds
-const recentFeeds = [
-  { id: 1, date: "2025-04-03", time: "06:00 AM", portion: "100g", status: "Successful" },
-  { id: 2, date: "2025-04-02", time: "06:00 PM", portion: "100g", status: "Successful" },
-  { id: 3, date: "2025-04-02", time: "12:30 PM", portion: "120g", status: "Successful" },
-  { id: 4, date: "2025-04-02", time: "06:00 AM", portion: "100g", status: "Failed" },
-  { id: 5, date: "2025-04-01", time: "06:00 PM", portion: "100g", status: "Successful" },
-];
+// Interfaces for TypeScript (fixes 'any' and type mismatches)
+interface Schedule {
+  _id?: string;
+  time: string;
+  portion: string;
+  frequency: "daily" | "custom" | "specific";
+  status: "Active" | "Paused";
+  days?: string[];
+  notes?: string;
+}
+
+interface Feed {
+  _id: string;
+  date: string;
+  time: string;
+  portion: string;
+  status: "Successful" | "Failed";
+}
 
 // Form schema for validation
 const scheduleSchema = z.object({
@@ -61,18 +73,23 @@ const scheduleSchema = z.object({
 
 type ScheduleFormData = z.infer<typeof scheduleSchema>;
 
-export default function Schedule({ navigateTo }: { navigateTo: (path: string) => void }) {
+// Define props type for the component
+interface ScheduleProps {
+  navigateTo: (path: string) => void;
+}
+
+export default function Schedule({ navigateTo }: ScheduleProps) {
   const { schedules, fetchSchedules, addSchedule, updateSchedule, deleteSchedule } = useScheduleStore();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [scheduleToDelete, setScheduleToDelete] = useState<string | null>(null);
-  const [currentSchedule, setCurrentSchedule] = useState<any>(null);
+  const [currentSchedule, setCurrentSchedule] = useState<Schedule | null>(null); // Fix: Use Schedule type
   const [automatedFeeding, setAutomatedFeeding] = useState(true);
   const [manualReminders, setManualReminders] = useState(false);
-  const [notificationMethod, setNotificationMethod] = useState("app");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [sortBy, setSortBy] = useState("time");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "paused">("all"); // Fix: Explicit union type
+  const [sortBy, setSortBy] = useState<"time" | "frequency">("time"); // Fix: Explicit union type
+  const [recentFeeds, setRecentFeeds] = useState<Feed[]>([]); // Fix: Use Feed type
 
   // State for Add Dialog
   const [addDays, setAddDays] = useState<string[]>([]);
@@ -85,19 +102,33 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
   const addForm = useForm<ScheduleFormData>({
     resolver: zodResolver(scheduleSchema),
     defaultValues: { time: "", portion: "", frequency: "daily", notes: "" },
-    mode: "onChange", // Validate on change to clear errors as fields are filled
+    mode: "onChange",
   });
 
   const editForm = useForm<ScheduleFormData>({
     resolver: zodResolver(scheduleSchema),
     defaultValues: { time: "", portion: "", frequency: "daily", notes: "" },
-    mode: "onChange", // Validate on change
+    mode: "onChange",
   });
 
-  // Fetch schedules on mount
+  // Fetch schedules and recent feeds on mount
   useEffect(() => {
     fetchSchedules();
+    fetchRecentFeeds();
   }, [fetchSchedules]);
+
+  // Fetch recent automated feeds
+  const fetchRecentFeeds = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/api/feed-log");
+      if (!response.ok) throw new Error("Failed to fetch feed logs");
+      const data: Feed[] = await response.json();
+      setRecentFeeds(data.slice(0, 5)); // Limit to 5 most recent
+    } catch (error) {
+      console.error("Failed to fetch recent feeds:", error);
+      toast.error("Failed to load recent feeds.");
+    }
+  };
 
   // Set initial edit dialog state
   useEffect(() => {
@@ -107,7 +138,7 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
       editForm.reset({
         time: currentSchedule.time,
         portion: currentSchedule.portion.replace("g", ""),
-        frequency: currentSchedule.frequency as "daily" | "custom" | "specific",
+        frequency: currentSchedule.frequency,
         notes: currentSchedule.notes || "",
       });
     }
@@ -125,7 +156,7 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
   const handleAddSchedule = async (data: ScheduleFormData) => {
     const days =
       data.frequency === "daily" ? daysOfWeek.map((day) => day.label) : data.frequency === "specific" ? addDays : [];
-    const newSchedule = { ...data, days, status: "Active" as const };
+    const newSchedule: Schedule = { ...data, days, status: "Active" };
     try {
       await addSchedule(newSchedule);
       setAddDialogOpen(false);
@@ -138,7 +169,7 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
   };
 
   // Handle editing a schedule
-  const handleEditSchedule = (schedule: any) => {
+  const handleEditSchedule = (schedule: Schedule) => {
     setCurrentSchedule(schedule);
     setEditDialogOpen(true);
   };
@@ -146,7 +177,7 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
   const handleEditScheduleSubmit = async (data: ScheduleFormData) => {
     const days =
       data.frequency === "daily" ? daysOfWeek.map((day) => day.label) : data.frequency === "specific" ? editDays : [];
-    const updatedSchedule = { ...data, days, status: editStatus };
+    const updatedSchedule: Schedule = { ...data, days, status: editStatus };
     try {
       if (currentSchedule?._id) {
         await updateSchedule(currentSchedule._id, updatedSchedule);
@@ -184,7 +215,33 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
   const handleEditDayChange = (day: string, checked: boolean) =>
     setEditDays((prev) => (checked ? [...prev, day] : prev.filter((d) => d !== day)));
 
-  const handleFeedNow = () => toast("Feeding now!");
+  // Handle manual feed now with logging
+  const handleFeedNow = async () => {
+    try {
+      const response = await fetch(`http://${ESP32_IP}/feed`);
+      if (!response.ok) {
+        throw new Error("Failed to send feed command");
+      }
+      const text = await response.text();
+      console.log(text);
+      // Log manual feed to backend
+      await fetch("http://localhost:3000/api/feed-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: new Date().toISOString().split("T")[0],
+          time: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
+          portion: "100g", // Default for manual feed
+          status: "Successful",
+        }),
+      });
+      toast.success("Feeding now!");
+      fetchRecentFeeds(); // Refresh recent feeds
+    } catch (error) {
+      console.error("Error sending feed command:", error);
+      toast.error("Failed to feed. Ensure the ESP32 is connected and on the same network.");
+    }
+  };
 
   return (
     <Layout
@@ -229,7 +286,7 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
                               {...field}
                               onChange={(e) => {
                                 field.onChange(e);
-                                addForm.trigger("time"); // Trigger validation
+                                addForm.trigger("time");
                               }}
                             />
                           )}
@@ -252,7 +309,7 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
                               {...field}
                               onChange={(e) => {
                                 field.onChange(e);
-                                addForm.trigger("portion"); // Trigger validation
+                                addForm.trigger("portion");
                               }}
                             />
                           )}
@@ -271,7 +328,7 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
                               value={field.value}
                               onValueChange={(val) => {
                                 field.onChange(val);
-                                addForm.trigger("frequency"); // Trigger validation
+                                addForm.trigger("frequency");
                               }}
                             >
                               <SelectTrigger>
@@ -418,41 +475,45 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
               <CardDescription>History of recent automated feeding events</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Portion</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentFeeds.map((feed) => (
-                    <TableRow key={feed.id}>
-                      <TableCell>{feed.date}</TableCell>
-                      <TableCell>{feed.time}</TableCell>
-                      <TableCell>{feed.portion}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={feed.status === "Successful" ? "outline" : "destructive"}
-                          className={
-                            feed.status === "Successful"
-                              ? "bg-green-100 text-green-600 hover:bg-green-200 border-green-200"
-                              : "bg-red-100 text-red-600 hover:bg-red-200 border-red-200"
-                          }
-                        >
-                          {feed.status}
-                        </Badge>
-                      </TableCell>
+              {recentFeeds.length === 0 ? (
+                <p className="text-gray-500">No recent feeds available.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Portion</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {recentFeeds.map((feed) => (
+                      <TableRow key={feed._id}>
+                        <TableCell>{feed.date}</TableCell>
+                        <TableCell>{feed.time}</TableCell>
+                        <TableCell>{feed.portion}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={feed.status === "Successful" ? "outline" : "destructive"}
+                            className={
+                              feed.status === "Successful"
+                                ? "bg-green-100 text-green-600 hover:bg-green-200 border-green-200"
+                                : "bg-red-100 text-red-600 hover:bg-red-200 border-red-200"
+                            }
+                          >
+                            {feed.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
             <CardFooter>
-            <Button variant="outline" size="sm" className="ml-auto" onClick={() => navigateTo("/history")}>                
-              View All History
+              <Button variant="outline" size="sm" className="ml-auto" onClick={() => navigateTo("/history")}>
+                View All History
               </Button>
             </CardFooter>
           </Card>
@@ -503,7 +564,6 @@ export default function Schedule({ navigateTo }: { navigateTo: (path: string) =>
                   </SelectContent>
                 </Select>
               </div>
-              
               <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">Save Preferences</Button>
             </CardContent>
           </Card>

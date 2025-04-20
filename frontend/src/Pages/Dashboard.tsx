@@ -10,6 +10,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts"
 import { CircleIcon, Clock, Utensils } from "lucide-react"
 
+// ESP32 IP address
+const ESP32_IP = "192.168.0.109"; // Your ESP32's IP address
+
 // Sample data for the monthly feeding chart
 const monthlyFeedingData = [
   { name: "Jan", grams: 48000 },
@@ -33,13 +36,27 @@ const recentActivity = [
   { id: 4, date: "2025-04-03", time: "12:30 PM", method: "Scheduled" },
 ]
 
-export default function Dashboard({ navigateTo }: { navigateTo: (path: string) => void }) {
+interface DashboardProps {
+  navigateTo: (path: string) => void
+}
+
+export default function Dashboard({ navigateTo }: DashboardProps) {
   const [foodLevel, setFoodLevel] = useState(75) // Initial food level percentage
 
-  const handleFeedNow = () => {
-    // Decrease food level by 5% (or any amount you prefer) when feeding
-    setFoodLevel((prevLevel) => Math.max(0, prevLevel - 5)) // Prevent going below 0
-    alert("Feeding now!")
+  const handleFeedNow = async () => {
+    try {
+      const response = await fetch(`http://${ESP32_IP}/feed`);
+      if (!response.ok) {
+        throw new Error("Failed to send feed command");
+      }
+      const text = await response.text();
+      console.log(text); // Should log "Feed completed"
+      setFoodLevel((prevLevel) => Math.max(0, prevLevel - 5)); // Decrease food level by 5%
+      alert("Feeding now!");
+    } catch (error) {
+      console.error("Error sending feed command:", error);
+      alert("Failed to feed. Ensure the ESP32 is connected and on the same network.");
+    }
   }
 
   return (
@@ -47,10 +64,13 @@ export default function Dashboard({ navigateTo }: { navigateTo: (path: string) =
       currentPath="/"
       navigateTo={navigateTo}
       title="Dashboard"
-      showFeedNowButton={true}
-      onFeedNow={handleFeedNow}
     >
       {/* Status Cards */}
+      <div className="flex items-end justify-end gap-4 mb-2">
+        <Button className="bg-orange-500 hover:bg-orange-600 text-white" onClick={handleFeedNow}>
+          Feed now
+        </Button>
+      </div>
       <div className="grid gap-6 md:grid-cols-3 mb-8">
         {/* Food Level Card */}
         <StatusCard

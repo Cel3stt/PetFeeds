@@ -3,8 +3,10 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { connectDB } from './database/connectDB.js';
-import scheduleRoutes  from './routes/schedule.routes.js'
-
+import scheduleRoutes from './routes/schedule.routes.js';
+import feedLogRoutes from './routes/feedlog.routes.js';
+import Schedule from './models/schedule.model.js';
+import FeedLog from './models/feedlog.model.js';
 
 dotenv.config();
 const app = express();
@@ -15,9 +17,74 @@ app.use(express.json());
 
 // Routes
 app.use('/api/schedule', scheduleRoutes);
+app.use('/api/feed-log', feedLogRoutes);
+
+// Periodic task to check schedules and trigger feeds
+const checkSchedules = async () => {
+  try {
+    const now = new Date();
+    const currentTime = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    const currentDay = now.toLocaleDateString('en-US', { weekday: 'short' });
+    const currentDate = now.toISOString().split('T')[0];
+
+    const schedules = await Schedule.find({ status: 'Active' });
+    for (const schedule of schedules) {
+      const isDaily = schedule.frequency === 'daily';
+      const isSpecificDay = schedule.frequency === 'specific' && schedule.days.includes(currentDay);
+      const timeMatches = schedule.time === currentTime;
+
+      if (timeMatches && (isDaily || isSpecificDay)) {
+        console.log(`Triggering feed for schedule: ${schedule.time}, ${schedule.portion}`);
+        try {
+          // Extract numeric portion value and ensure it's within valid range
+          const portionValue = parseFloat(schedule.portion.replace('g', ''));
+          if (isNaN(portionValue) || portionValue < 10 || portionValue > 200) {
+            throw new Error(`Invalid portion size: ${schedule.portion}`);
+          }
+
+          // Send feed command to ESP32
+          const esp32Response = await fetch(`http://192.168.0.109/feed?portion=${portionValue}`, {
+            timeout: 10000 // 10 second timeout
+          });
+
+          if (!esp32Response.ok) {
+            throw new Error(`ESP32 responded with status: ${esp32Response.status}`);
+          }
+
+          const responseText = await esp32Response.text();
+          console.log(`ESP32 feed response: ${responseText}`);
+
+          // Log the successful feed event
+          await FeedLog.create({
+            date: currentDate,
+            time: schedule.time,
+            portion: schedule.portion,
+            status: 'Successful',
+            notes: `Automated feed: ${responseText}`
+          });
+
+        } catch (error) {
+          console.error(`Feed failed for schedule ${schedule._id}:`, error.message);
+          // Log the failed feed event
+          await FeedLog.create({
+            date: currentDate,
+            time: schedule.time,
+            portion: schedule.portion,
+            status: 'Failed',
+            notes: `Error: ${error.message}`
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking schedules:', error);
+  }
+};
+
+// Run checkSchedules every minute
+setInterval(checkSchedules, 60 * 1000);
 
 app.listen(PORT, () => {
-    connectDB();
-    console.log("Server is running on port", PORT);
-  });
-  
+  connectDB();
+  console.log("Server is running on port", PORT);
+});
