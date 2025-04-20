@@ -78,6 +78,7 @@ const checkSchedules = async () => {
             time: schedule.time,
             portion: schedule.portion,
             status: 'Failed',
+            method: 'Scheduled',
             notes: `Error: ${error.message}`
           });
         }

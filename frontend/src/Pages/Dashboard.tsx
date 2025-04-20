@@ -50,7 +50,7 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
   useEffect(() => {
     const fetchFoodLevel = async () => {
       try {
-        const response = await fetch(`http://${ESP32_IP}/foodLevel`, { timeout: 5000 });
+        const response = await fetch(`http://${ESP32_IP}/foodLevel`);
         if (!response.ok) {
           throw new Error(`Failed to fetch food level: ${response.status}`);
         }
@@ -59,7 +59,7 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
         setDistance(data.distance);
         setLastUpdate(new Date().toLocaleTimeString());
         setError(null);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error fetching food level:', error);
         setError('Failed to update food level');
       }
@@ -124,9 +124,10 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
 
       toast.success(`Manual feeding completed (${STANDARD_PORTION}g)!`);
       fetchRecentFeeds();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error during feed:", error);
-      toast.error(`Failed to feed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to feed: ${errorMessage}`);
       try {
         const now = new Date();
         await fetch("http://localhost:3000/api/feed-log", {
@@ -233,16 +234,18 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge
-                      variant={feed.method === "Scheduled" ? "outline" : "secondary"}
+                      variant="outline"
                       className={
-                        feed.method === "Scheduled" ? "bg-orange-100 text-orange-500 hover:bg-orange-200 border-orange-200" :
-                        "bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200"
+                        feed.method === "Scheduled" ? "bg-purple-100 text-purple-600 hover:bg-purple-200 border-purple-200" :
+                        feed.method === "Manual" ? "bg-blue-100 text-blue-600 hover:bg-blue-200 border-blue-200" :
+                        feed.method === "Manual-Button" ? "bg-orange-100 text-orange-600 hover:bg-orange-200 border-orange-200" :
+                        "bg-gray-100 text-gray-600 hover:bg-gray-200 border-gray-200"
                       }
                     >
-                      {feed.method}
+                      {feed.method || "Unknown"}
                     </Badge>
                     <Badge
-                      variant={feed.status === "Successful" ? "outline" : "destructive"}
+                      variant="outline"
                       className={
                         feed.status === "Successful" ? "bg-green-100 text-green-600 hover:bg-green-200 border-green-200" :
                         "bg-red-100 text-red-600 hover:bg-red-200 border-red-200"
