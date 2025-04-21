@@ -33,7 +33,7 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 
 // ESP32 IP address
-const ESP32_IP = "192.168.0.109"; // Replace with your ESP32's IP address
+const ESP32_IP = "192.168.0.100"; // Replace with your ESP32's IP address
 
 // Initial sample data for snapshots
 const initialSnapshots = [

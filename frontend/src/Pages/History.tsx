@@ -32,33 +32,35 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
 import toast from "react-hot-toast"
+import axios from "axios"
 
-// Sample data for feeding history
-const feedingHistory = [
-  { id: 1, date: "2025-04-15", time: "06:00 AM", portion: "100g", type: "Automated", status: "Successful" },
-  { id: 2, date: "2025-04-14", time: "06:00 PM", portion: "100g", type: "Automated", status: "Successful" },
-  { id: 3, date: "2025-04-14", time: "12:30 PM", portion: "120g", type: "Manual", status: "Successful" },
-  { id: 4, date: "2025-04-14", time: "06:00 AM", portion: "100g", type: "Automated", status: "Failed" },
-  { id: 5, date: "2025-04-13", time: "06:00 PM", portion: "100g", type: "Automated", status: "Successful" },
-  { id: 6, date: "2025-04-13", time: "12:00 PM", portion: "150g", type: "Manual", status: "Successful" },
-  { id: 7, date: "2025-04-13", time: "06:00 AM", portion: "100g", type: "Automated", status: "Successful" },
-  { id: 8, date: "2025-04-12", time: "06:00 PM", portion: "100g", type: "Automated", status: "Successful" },
-  { id: 9, date: "2025-04-12", time: "12:00 PM", portion: "100g", type: "Automated", status: "Successful" },
-  { id: 10, date: "2025-04-12", time: "06:00 AM", portion: "100g", type: "Automated", status: "Successful" },
-  { id: 11, date: "2025-04-11", time: "06:00 PM", portion: "100g", type: "Automated", status: "Successful" },
-  { id: 12, date: "2025-04-11", time: "12:00 PM", portion: "120g", type: "Manual", status: "Successful" },
-  { id: 13, date: "2025-04-11", time: "06:00 AM", portion: "100g", type: "Automated", status: "Failed" },
-  { id: 14, date: "2025-04-10", time: "06:00 PM", portion: "100g", type: "Automated", status: "Successful" },
-  { id: 15, date: "2025-04-10", time: "12:00 PM", portion: "100g", type: "Automated", status: "Successful" },
-]
+// API base URL - replace with your actual backend URL
+const API_URL = "http://localhost:3000/api"
 
-// Statistics data
-const statisticsData = {
-  totalFeeds: 152,
-  successRate: "98.7%",
-  averagePortion: "105g",
-  mostCommonTime: "06:00 AM",
+// Types based on the backend model
+interface FeedLog {
+  _id: string
+  date: string
+  time: string
+  portion: string
+  method: "Manual" | "Scheduled" | "Manual-Button"
+  status: "Successful" | "Failed"
+  notes?: string
+  createdAt: string
+  updatedAt: string
 }
+
+interface TimeCount {
+  [key: string]: number
+}
+
+// Function to convert MongoDB ObjectId to a unique number
+const objectIdToNumber = (objectId: string): number => {
+  // Take the last 8 characters of the ObjectId and convert to a number
+  const lastEightChars = objectId.slice(-8);
+  // Convert hex to decimal and ensure it's a positive number
+  return Math.abs(parseInt(lastEightChars, 16));
+};
 
 export default function History({ navigateTo }: { navigateTo: (path: string) => void }) {
   const [filterStatus, setFilterStatus] = useState("all")
@@ -70,26 +72,87 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
   const [date, setDate] = useState<Date | undefined>(undefined)
   const [filterDialogOpen, setFilterDialogOpen] = useState(false)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
-  const [selectedFeed, setSelectedFeed] = useState<any>(null)
+  const [selectedFeed, setSelectedFeed] = useState<FeedLog | null>(null)
+  const [feedLogs, setFeedLogs] = useState<FeedLog[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Statistics state
+  const [statistics, setStatistics] = useState({
+    totalFeeds: 0,
+    successRate: "0%",
+    averagePortion: "0g",
+    mostCommonTime: "N/A",
+  })
+
+  // Format feed ID for display
+  const formatFeedId = (id: string): string => {
+    const numericId = objectIdToNumber(id);
+    return `#${numericId.toString().padStart(6, '0')}`;
+  };
+
+  // Fetch feed logs from the backend
+  useEffect(() => {
+    const fetchFeedLogs = async () => {
+      try {
+        setLoading(true)
+        const response = await axios.get<FeedLog[]>(`${API_URL}/feed-log`)
+        setFeedLogs(response.data)
+        
+        // Calculate statistics
+        const total = response.data.length
+        const successful = response.data.filter((log) => log.status === "Successful").length
+        const successRate = total > 0 ? ((successful / total) * 100).toFixed(1) : "0"
+        
+        // Calculate average portion
+        const portions = response.data.map((log) => parseInt(log.portion))
+        const averagePortion = portions.length > 0 
+          ? Math.round(portions.reduce((a, b) => a + b, 0) / portions.length)
+          : 0
+
+        // Find most common time
+        const timeCount = response.data.reduce((acc: TimeCount, log) => {
+          acc[log.time] = (acc[log.time] || 0) + 1
+          return acc
+        }, {} as TimeCount)
+        const mostCommonTime = Object.entries(timeCount).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A"
+
+        setStatistics({
+          totalFeeds: total,
+          successRate: `${successRate}%`,
+          averagePortion: `${averagePortion}g`,
+          mostCommonTime,
+        })
+
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch feed logs")
+        toast.error("Failed to fetch feeding history")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchFeedLogs()
+  }, [])
 
   const itemsPerPage = 10
 
-  // Filter and sort history
-  const filteredHistory = feedingHistory.filter((feed) => {
-    const matchesStatus = filterStatus === "all" ? true : feed.status.toLowerCase() === filterStatus.toLowerCase()
-    const matchesType = filterType === "all" ? true : feed.type.toLowerCase() === filterType.toLowerCase()
+  // Filter and sort feed logs
+  const filteredLogs = feedLogs.filter((log) => {
+    const matchesStatus = filterStatus === "all" ? true : log.status.toLowerCase() === filterStatus.toLowerCase()
+    const matchesType = filterType === "all" ? true : log.method.toLowerCase() === filterType.toLowerCase()
     const matchesSearch =
       searchQuery === ""
         ? true
-        : feed.date.includes(searchQuery) ||
-          feed.time.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          feed.portion.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesDate = !date ? true : feed.date === format(date, "yyyy-MM-dd")
+        : log.date.includes(searchQuery) ||
+          log.time.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          log.portion.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesDate = !date ? true : log.date === format(date, "yyyy-MM-dd")
 
     return matchesStatus && matchesType && matchesSearch && matchesDate
   })
 
-  const sortedHistory = [...filteredHistory].sort((a, b) => {
+  const sortedLogs = [...filteredLogs].sort((a, b) => {
     if (sortBy === "date") {
       const dateComparison = a.date.localeCompare(b.date)
       if (dateComparison !== 0) return sortOrder === "asc" ? dateComparison : -dateComparison
@@ -97,29 +160,29 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
     } else if (sortBy === "time") {
       return a.time.localeCompare(b.time) * (sortOrder === "asc" ? 1 : -1)
     } else if (sortBy === "portion") {
-      const aValue = Number.parseInt(a.portion.replace("g", ""))
-      const bValue = Number.parseInt(b.portion.replace("g", ""))
+      const aValue = Number.parseInt(a.portion)
+      const bValue = Number.parseInt(b.portion)
       return (aValue - bValue) * (sortOrder === "asc" ? 1 : -1)
     }
     return 0
   })
 
   // Pagination
-  const totalPages = Math.ceil(sortedHistory.length / itemsPerPage)
-  const paginatedHistory = sortedHistory.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const totalPages = Math.ceil(sortedLogs.length / itemsPerPage)
+  const paginatedLogs = sortedLogs.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1)
   }, [filterStatus, filterType, searchQuery, date, sortBy, sortOrder])
 
-  const handleViewDetails = (feed: any) => {
+  const handleViewDetails = (feed: FeedLog) => {
     setSelectedFeed(feed)
     setDetailsDialogOpen(true)
   }
 
-  const handleExportData = () => {
-    toast.success("Feeding history exported successfully!")
+  const handleBackToSchedule = () => {
+    navigateTo("/schedule")
   }
 
   const handleClearFilters = () => {
@@ -130,10 +193,6 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
     setSortOrder("desc")
     setSearchQuery("")
     setFilterDialogOpen(false)
-  }
-
-  const handleBackToSchedule = () => {
-    navigateTo("/schedule")
   }
 
   return (
@@ -148,25 +207,42 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="border border-orange-200">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium text-muted-foreground">Total Feeds</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{statisticsData.totalFeeds}</div>
+              <div className="text-2xl font-bold">{statistics.totalFeeds}</div>
             </CardContent>
           </Card>
         
           <Card className="border border-orange-200">
             <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-medium text-muted-foreground">Success Rate</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statistics.successRate}</div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-orange-200">
+            <CardHeader className="pb-2">
               <CardTitle className="text-lg font-medium text-muted-foreground">Average Portion</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold ">{statisticsData.averagePortion}</div>
+              <div className="text-2xl font-bold">{statistics.averagePortion}</div>
             </CardContent>
           </Card>
-         
+
+          <Card className="border border-orange-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-medium text-muted-foreground">Most Common Time</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statistics.mostCommonTime}</div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Main History Card */}
@@ -178,7 +254,6 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
                 <CardDescription>Complete record of all feeding events</CardDescription>
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
-                
                 <Dialog open={filterDialogOpen} onOpenChange={setFilterDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm" className="flex items-center">
@@ -213,8 +288,9 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="all">All Types</SelectItem>
-                            <SelectItem value="automated">Automated</SelectItem>
-                            <SelectItem value="manual">Manual</SelectItem>
+                            <SelectItem value="Manual">Manual</SelectItem>
+                            <SelectItem value="Scheduled">Scheduled</SelectItem>
+                            <SelectItem value="Manual-Button">Manual Button</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -287,28 +363,41 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
               <div className="flex items-center gap-2 w-full md:w-auto">
                 <Select value={filterType} onValueChange={setFilterType}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="automated">Automated</SelectItem>
-                    <SelectItem value="manual">Manual</SelectItem>
+                    <SelectItem value="Manual">Manual</SelectItem>
+                    <SelectItem value="Scheduled">Scheduled</SelectItem>
+                    <SelectItem value="Manual-Button">Manual Button</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="All Statuses" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="successful">Successful</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="Successful">Successful</SelectItem>
+                    <SelectItem value="Failed">Failed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {paginatedHistory.length === 0 ? (
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-10">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+                <p className="text-gray-500 text-lg mt-4">Loading feeding history...</p>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center py-10">
+                <p className="text-red-500 text-lg">{error}</p>
+                <Button variant="outline" onClick={() => window.location.reload()} className="mt-4">
+                  Try Again
+                </Button>
+              </div>
+            ) : paginatedLogs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10">
                 <CalendarDays className="h-12 w-12 text-gray-400 mb-2" />
                 <p className="text-gray-500 text-lg">No feeding history found</p>
@@ -333,8 +422,8 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paginatedHistory.map((feed) => (
-                        <TableRow key={feed.id}>
+                      {paginatedLogs.map((feed) => (
+                        <TableRow key={feed._id}>
                           <TableCell>{feed.date}</TableCell>
                           <TableCell>{feed.time}</TableCell>
                           <TableCell>{feed.portion}</TableCell>
@@ -342,12 +431,14 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
                             <Badge
                               variant="outline"
                               className={
-                                feed.type === "Automated"
+                                feed.method === "Scheduled"
+                                  ? "bg-purple-100 text-purple-600 hover:bg-purple-200 border-purple-200"
+                                  : feed.method === "Manual"
                                   ? "bg-blue-100 text-blue-600 hover:bg-blue-200 border-blue-200"
-                                  : "bg-purple-100 text-purple-600 hover:bg-purple-200 border-purple-200"
+                                  : "bg-orange-100 text-orange-600 hover:bg-orange-200 border-orange-200"
                               }
                             >
-                              {feed.type}
+                              {feed.method}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -363,9 +454,12 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" onClick={() => handleViewDetails(feed)}>
-                              Details
-                            </Button>
+                            <div className="flex items-center justify-end gap-2">
+                              <span className="text-sm text-gray-500">{formatFeedId(feed._id)}</span>
+                              <Button variant="ghost" size="sm" onClick={() => handleViewDetails(feed)}>
+                                Details
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -455,7 +549,7 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Feed Type</Label>
-                  <p className="font-medium">{selectedFeed.type}</p>
+                  <p className="font-medium">{selectedFeed.method}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Status</Label>
@@ -472,28 +566,21 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Feed ID</Label>
-                  <p className="font-medium">#{selectedFeed.id}</p>
+                  <p className="font-medium">{formatFeedId(selectedFeed._id)}</p>
                 </div>
               </div>
 
-              {selectedFeed.status === "Failed" && (
+              {selectedFeed.notes && (
+                <div>
+                  <Label className="text-muted-foreground">Notes</Label>
+                  <p className="text-sm mt-1">{selectedFeed.notes}</p>
+                </div>
+              )}
+
+              {selectedFeed.status === "Failed" && !selectedFeed.notes && (
                 <div>
                   <Label className="text-muted-foreground">Failure Reason</Label>
-                  <p className="text-red-600">Low food level detected. Please refill the food container.</p>
-                </div>
-              )}
-
-              {selectedFeed.type === "Automated" && (
-                <div>
-                  <Label className="text-muted-foreground">Schedule</Label>
-                  <p className="font-medium">Daily, 6:00 AM</p>
-                </div>
-              )}
-
-              {selectedFeed.type === "Manual" && (
-                <div>
-                  <Label className="text-muted-foreground">Triggered By</Label>
-                  <p className="font-medium">Mobile App</p>
+                  <p className="text-red-600">Unknown error occurred during feeding.</p>
                 </div>
               )}
             </div>
@@ -506,3 +593,4 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
     </Layout>
   )
 }
+
