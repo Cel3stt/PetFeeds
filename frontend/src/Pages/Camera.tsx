@@ -62,34 +62,6 @@ const reverseResolutionMapping: { [key: string]: string } = {
   "1600x1200": "1080p", // UXGA
 };
 
-// Sample data for camera activities
-const cameraActivities = [
-  {
-    id: 1,
-    time: "2025-04-03 14:30:22",
-    type: "Snapshot Taken",
-    details: "Manual snapshot at 2:30 PM",
-  },
-  {
-    id: 2,
-    time: "2025-04-03 12:15:05",
-    type: "Motion Detected",
-    details: "Pet activity detected near feeder",
-  },
-  {
-    id: 3,
-    time: "2025-04-03 09:45:18",
-    type: "Snapshot Taken",
-    details: "Manual snapshot at 9:45 AM",
-  },
-  {
-    id: 4,
-    time: "2025-04-02 19:20:33",
-    type: "Motion Detected",
-    details: "Pet activity detected near feeder",
-  },
-];
-
 // Utility function to convert a data URL to a File object
 const dataURLtoFile = (dataurl: string, filename: string): File => {
   console.log("Debug: dataURLtoFile called with dataurl:", dataurl);
@@ -155,17 +127,39 @@ export default function CameraPage({
   const [selectedImage, setSelectedImage] = useState<any>(null);
   const [cameraIp, setCameraIp] = useState("192.168.0.108");
   const [error, setError] = useState<string | null>(null);
+  const [panAngle, setPanAngle] = useState(90); // Added for pan/tilt
+  const [tiltAngle, setTiltAngle] = useState(90); // Added for pan/tilt
 
   const { snapshots, fetchSnapshots, addSnapshot, deleteSnapshot } =
     useSnapshotStore();
 
   const streamUrl = `http://${cameraIp}/video?res=${resolutionMapping[resolution]}`;
   const snapshotUrl = `http://${cameraIp}/snapshot?res=${resolutionMapping[resolution]}`;
-  // e.g., http://192.168.0.108/snapshot?res=800x600
+
   // Fetch snapshots when the component mounts
   useEffect(() => {
     fetchSnapshots();
   }, [fetchSnapshots]);
+
+  // Create dynamic activities from snapshots
+  const [activities, setActivities] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Create snapshot-based activities
+    const snapshotActivities = snapshots.slice(0, 10).map((snapshot) => ({
+      id: `snapshot-${snapshot._id}`,
+      time: snapshot.timestamp,
+      type: `Snapshot Captured`,
+      details: `Snapshot taken due to ${snapshot.reason}`,
+    }));
+
+    // Sort activities by time (most recent first)
+    const sortedActivities = snapshotActivities.sort(
+      (a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()
+    );
+
+    setActivities(sortedActivities);
+  }, [snapshots]);
 
   // Fetch initial settings from the server
   useEffect(() => {
@@ -198,7 +192,7 @@ export default function CameraPage({
     };
 
     fetchSettings();
-  }, [cameraIp]); // Re-fetch if cameraIp changes
+  }, [cameraIp]);
 
   // Update resolution on the server when the user changes it
   const handleResolutionChange = async (newResolution: string) => {
@@ -302,6 +296,7 @@ export default function CameraPage({
       toast.error(`Failed to capture snapshot: ${error.message}`);
     }
   };
+
   const handleViewImage = (image: any) => {
     setSelectedImage(image);
   };
@@ -316,6 +311,39 @@ export default function CameraPage({
       setSelectedImage(null);
     }
   }
+  const handleDownloadImage = async () => {
+    if (selectedImage) {
+      try {
+        const imageUrl = `http://localhost:3000${selectedImage.url}`;
+        const response = await fetch(imageUrl, {
+          mode: "cors",
+          headers: {
+            Accept: "image/jpeg",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `snapshot-${selectedImage.timestamp.replace(
+          /[: ]/g,
+          "-"
+        )}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error("Error downloading image:", error);
+        toast.error("Failed to download image.");
+      }
+    }
+  };
 
   const sendServoCommand = async (endpoint: string, angle: number) => {
     try {
@@ -477,39 +505,41 @@ export default function CameraPage({
                   <h3 className="text-sm font-medium">Pan & Tilt</h3>
                   <div className="grid grid-cols-3 gap-2 justify-items-center">
                     <div></div>
-                    <Button variant="outline" size="icon" onClick={handleTiltUp}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleTiltUp}
+                    >
                       <ChevronUp className="h-4 w-4" />
                     </Button>
                     <div></div>
 
-                    <Button variant="outline" size="icon" onClick={handlePanLeft}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handlePanLeft}
+                    >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <div className="w-9 h-9 rounded-full bg-gray-100"></div>
-                    <Button variant="outline" size="icon" onClick={handlePanRight}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handlePanRight}
+                    >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
 
                     <div></div>
-                    <Button variant="outline" size="icon" onClick={handleTiltDown}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleTiltDown}
+                    >
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                     <div></div>
                   </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                {/* Rotate Camera */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium">Rotate Camera</h3>
-                    <p className="text-xs text-gray-500">Switch camera view</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <RotateCw className="h-4 w-4 mr-2" />
-                    Rotate
-                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -548,11 +578,6 @@ export default function CameraPage({
                 ))}
               </div>
             </CardContent>
-            <CardFooter>
-              <Button variant="outline" size="sm" className="ml-auto">
-                View All Snapshots
-              </Button>
-            </CardFooter>
           </Card>
         </div>
 
@@ -567,26 +592,27 @@ export default function CameraPage({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {cameraActivities.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="border-l-2 border-orange-200 pl-4 pb-4 relative"
-                  >
-                    <div className="absolute w-3 h-3 bg-orange-500 rounded-full -left-[7px] top-0"></div>
-                    <p className="text-xs text-gray-500">
-                      {new Date(activity.time).toLocaleString()}
-                    </p>
-                    <p className="text-sm font-medium">{activity.type}</p>
-                    <p className="text-sm text-gray-500">{activity.details}</p>
-                  </div>
-                ))}
+                {activities.length > 0 ? (
+                  activities.map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="border-l-2 border-orange-200 pl-4 pb-4 relative"
+                    >
+                      <div className="absolute w-3 h-3 bg-orange-500 rounded-full -left-[7px] top-0"></div>
+                      <p className="text-xs text-gray-500">
+                        {new Date(activity.time).toLocaleString()}
+                      </p>
+                      <p className="text-sm font-medium">{activity.type}</p>
+                      <p className="text-sm text-gray-500"> </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    No recent activities available.
+                  </p>
+                )}
               </div>
             </CardContent>
-            <CardFooter>
-              <Button variant="outline" size="sm" className="w-full">
-                View All Activities
-              </Button>
-            </CardFooter>
           </Card>
 
           {/* Troubleshooting Tips */}
@@ -613,11 +639,6 @@ export default function CameraPage({
                 </div>
               </div>
             </CardContent>
-            <CardFooter>
-              <Button variant="link" className="text-orange-500">
-                Visit our help center for more support
-              </Button>
-            </CardFooter>
           </Card>
         </div>
       </div>
@@ -657,7 +678,12 @@ export default function CameraPage({
             </div>
           )}
           <DialogFooter className="flex justify-between">
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleDownloadImage}
+            >
               <Download className="h-4 w-4" />
               Download
             </Button>
