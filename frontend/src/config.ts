@@ -1,5 +1,5 @@
 const isDev = import.meta.env.MODE === 'development';
 
-export const API_URL = isDev ? 'http://localhost:3000' : 'http://34.232.21.31:80';
+export const API_URL = isDev ? 'http://localhost:3000' : 'http://34.232.21.31:8080';
 export const ESP32_IP = import.meta.env.VITE_ESP32_IP || '192.168.0.100';
 export const CAMERA_IP = import.meta.env.VITE_CAMERA_IP || '192.168.29.77';
