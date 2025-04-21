@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import {
   AlertCircle,
   ChevronDown,
-  
-  RotateCw,
+  ChevronRight,
+  ChevronUp,
+  ChevronLeft,
+  Download, 
   Trash2,
   ZoomIn,
   ZoomOut,
