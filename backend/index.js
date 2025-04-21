@@ -20,6 +20,9 @@ app.use(express.json());
 
 //upload path
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+app.get("/", (req, res) => {
+  res.send("PetFeeds Backend is running");
+});
 
 // Routes
 app.use("/api/schedule", scheduleRoutes);
