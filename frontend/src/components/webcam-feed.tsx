@@ -87,13 +87,6 @@ export function WebcamFeed({
             >
               <CameraIcon className="h-5 w-5" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-white hover:bg-white/20"
-            >
-              <Maximize2 className="h-5 w-5" />
-            </Button>
           </div>
         </div>
       </div>
