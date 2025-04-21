@@ -26,7 +26,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import toast from "react-hot-toast";
-import { API_URL, ESP32_IP } from "@/config";
+import { API_URL } from "@/config";
 
 const daysOfWeek = [
   { id: "mon", label: "Mon" },
@@ -198,56 +198,12 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
   const handleEditDayChange = (day: string, checked: boolean) =>
     setEditDays((prev) => (checked ? [...prev, day] : prev.filter((d) => d !== day)));
 
-  const handleFeedNow = async () => {
-    const STANDARD_PORTION = 50;
-    try {
-      const response = await fetch(`http://${ESP32_IP}/feed?portion=${STANDARD_PORTION}`);
-      if (!response.ok) {
-        throw new Error(`Failed to send feed command: ${response.status}`);
-      }
-      const text = await response.text();
-      console.log(text);
-      await fetch(`${API_URL}/api/feed-log`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          date: new Date().toISOString().split("T")[0],
-          time: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
-          portion: `${STANDARD_PORTION}g`,
-          method: "Manual",
-          status: "Successful",
-        }),
-      });
-      toast.success(`Manual feeding completed (${STANDARD_PORTION}g)!`);
-      fetchRecentFeeds();
-    } catch (error) {
-      console.error("Error sending feed command:", error);
-      toast.error("Failed to feed. Ensure the ESP32 is connected and on the same network.");
-      try {
-        await fetch(`${API_URL}/api/feed-log`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            date: new Date().toISOString().split("T")[0],
-            time: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
-            portion: `${STANDARD_PORTION}g`,
-            method: "Manual",
-            status: "Failed",
-          }),
-        });
-      } catch (logError) {
-        console.error("Failed to log failed attempt:", logError);
-      }
-    }
-  };
 
   return (
     <Layout
       currentPath="/schedule"
       navigateTo={navigateTo}
       title="Feed Schedule"
-      showFeedNowButton
-      onFeedNow={handleFeedNow}
     >
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2">

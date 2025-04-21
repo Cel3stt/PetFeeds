@@ -9,8 +9,6 @@ interface LayoutProps {
   currentPath: string
   navigateTo: (path: string) => void
   title: string
-  showFeedNowButton?: boolean
-  onFeedNow?: () => void
 }
 
 export function Layout({
@@ -18,14 +16,12 @@ export function Layout({
   currentPath,
   navigateTo,
   title,
-  showFeedNowButton = false,
-  onFeedNow,
 }: LayoutProps) {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar currentPath={currentPath} navigateTo={navigateTo} />
       <div className="flex-1 flex flex-col">
-        <Header title={title} showFeedNowButton={showFeedNowButton} onFeedNow={onFeedNow} navigateTo={navigateTo} />
+        <Header title={title} navigateTo={navigateTo} />
         <main className="flex-1 p-6">{children}</main>
       </div>
     </div>

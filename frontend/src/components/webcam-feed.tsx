@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { CameraIcon, Maximize2 } from "lucide-react";
+import { CameraIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface WebcamFeedProps {

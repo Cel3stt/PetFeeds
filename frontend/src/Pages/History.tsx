@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Download, Filter, Search, CalendarDays, ArrowLeft } from "lucide-react"
+import { Filter, Search, CalendarDays, ArrowLeft } from "lucide-react"
 import { Layout } from "@/components/layout"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -194,7 +194,7 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
   }
 
   return (
-    <Layout currentPath="/history" navigateTo={navigateTo} title="Feeding History" showFeedNowButton={false}>
+    <Layout currentPath="/history" navigateTo={navigateTo} title="Feeding History">
       <div className="grid gap-6">
         {/* Header with back button */}
         <div className="flex items-center">

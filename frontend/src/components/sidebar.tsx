@@ -1,6 +1,5 @@
 "use client"
-import { Bell, Book, Calendar, Camera, Home, MessageSquareText, Settings } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Book, Calendar, Camera, Home } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface SidebarProps {
@@ -13,9 +12,7 @@ export function Sidebar({ currentPath, navigateTo }: SidebarProps) {
     { path: "/", label: "Dashboard", icon: Home },
     { path: "/schedule", label: "Feed Schedule", icon: Calendar },
     { path: "/camera", label: "Live Camera", icon: Camera },
-    { path: "/notifications", label: "Notifications", icon: Bell, badge: 16 },
     { path: "/history", label: "History", icon: Book},
-    { path: "/settings", label: "Settings", icon: Settings },
   ]
 
   return (
@@ -44,11 +41,6 @@ export function Sidebar({ currentPath, navigateTo }: SidebarProps) {
             >
               <item.icon className="h-5 w-5" />
               <span>{item.label}</span>
-              {item.badge && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-orange-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {item.badge}
-                </span>
-              )}
             </div>
           ))}
         </nav>

@@ -1,13 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import Dashboard from "@/pages/dashboard"
-import Schedule from "@/pages/schedule"
-import CameraPage from "@/pages/camera"
-import NotificationsPage from "./Pages/Notifications"
-import SettingsPage from "./Pages/Settings"
+import Dashboard from "@/Pages/Dashboard"
+import Schedule from "@/Pages/Schedule"
+import CameraPage from "@/Pages/Camera"
 import { Toaster } from "react-hot-toast";
-import HistoryPage from "./Pages/History"
+import HistoryPage from "@/Pages/History"
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState("/")
@@ -23,10 +21,6 @@ export default function App() {
       {currentPage === "/schedule" && <Schedule navigateTo={navigateTo} />}
       {currentPage === "/camera" && <CameraPage navigateTo={navigateTo} />}
       {currentPage === "/history" && <HistoryPage navigateTo={navigateTo} />}
-      {currentPage === "/notifications" && <NotificationsPage navigateTo={navigateTo} />}
-      {currentPage === "/settings" && <SettingsPage navigateTo={navigateTo} />}
-
-
     </>
   )
 }

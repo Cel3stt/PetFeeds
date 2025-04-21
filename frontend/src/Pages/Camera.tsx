@@ -118,9 +118,6 @@ export default function CameraPage({
   navigateTo: (path: string) => void;
 }) {
   const [cameraOn, setCameraOn] = useState(true);
-  const [nightVision, setNightVision] = useState(false);
-  const [motionDetection, setMotionDetection] = useState(true);
-  const [notifyOnMotion, setNotifyOnMotion] = useState(true);
   const [resolution, setResolution] = useState("720p"); // Default to 720p
   const [quality, setQuality] = useState(12); // Default quality
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -301,9 +298,7 @@ export default function CameraPage({
     setSelectedImage(image);
   };
 
-  const handleFeedNow = () => {
-    alert("Feeding now!");
-  };
+
 
   const handleDeleteImage = () => {
     if (selectedImage) {
@@ -388,8 +383,6 @@ export default function CameraPage({
       currentPath="/camera"
       navigateTo={navigateTo}
       title="Live Camera Feed"
-      showFeedNowButton={true}
-      onFeedNow={handleFeedNow}
     >
       <div className="grid gap-6 md:grid-cols-3">
         {/* Left Column - Live Feed and Controls */}
