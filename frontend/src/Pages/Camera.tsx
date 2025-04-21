@@ -47,6 +47,8 @@ import { Switch } from "@/components/ui/switch";
 import { useSnapshotStore } from "@/store/snapshotStore";
 import toast from "react-hot-toast";
 
+const ESP32_IP = "192.168.0.100";
+
 // Mapping between frontend resolutions and ESP32-CAM resolutions
 const resolutionMapping: { [key: string]: string } = {
   "360p": "320x240", // QVGA
