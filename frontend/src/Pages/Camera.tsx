@@ -45,7 +45,7 @@ import { Switch } from "@/components/ui/switch";
 import { useSnapshotStore } from "@/store/snapshotStore";
 import toast from "react-hot-toast";
 
-const ESP32_IP = "192.168.0.100";
+import { API_URL, ESP32_IP, CAMERA_IP } from "@/config";
 
 // Mapping between frontend resolutions and ESP32-CAM resolutions
 const resolutionMapping: { [key: string]: string } = {
@@ -125,7 +125,7 @@ export default function CameraPage({
   const [quality, setQuality] = useState(12); // Default quality
   const [zoomLevel, setZoomLevel] = useState(1);
   const [selectedImage, setSelectedImage] = useState<any>(null);
-  const [cameraIp, setCameraIp] = useState("192.168.0.108");
+  const [cameraIp, setCameraIp] = useState(CAMERA_IP);
   const [error, setError] = useState<string | null>(null);
   const [panAngle, setPanAngle] = useState(90); // Added for pan/tilt
   const [tiltAngle, setTiltAngle] = useState(90); // Added for pan/tilt
@@ -314,7 +314,7 @@ export default function CameraPage({
   const handleDownloadImage = async () => {
     if (selectedImage) {
       try {
-        const imageUrl = `http://localhost:3000${selectedImage.url}`;
+        const imageUrl = `${API_URL}${selectedImage.url}`;
         const response = await fetch(imageUrl, {
           mode: "cors",
           headers: {
@@ -565,7 +565,7 @@ export default function CameraPage({
                   >
                     <img
                       src={
-                        `http://localhost:3000${snapshot.url}` ||
+                        `${API_URL}${snapshot.url}` ||
                         "/placeholder.svg"
                       }
                       alt={`Snapshot ${snapshot._id}`}
@@ -660,7 +660,7 @@ export default function CameraPage({
               <div className="aspect-video bg-gray-100 rounded-md overflow-hidden">
                 <img
                   src={
-                    `http://localhost:3000${selectedImage.url}` ||
+                    `${API_URL}${selectedImage.url}` ||
                     "/placeholder.svg"
                   }
                   alt={`Snapshot ${selectedImage._id}`}

@@ -10,8 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts"
 import { CircleIcon, Clock, Utensils } from "lucide-react"
 import { toast } from "react-hot-toast"
-
-const ESP32_IP = "192.168.0.100";
+import { API_URL, ESP32_IP } from "@/config"
 
 const monthlyFeedingData = [
   { name: "Jan", grams: 48000 },
@@ -72,7 +71,7 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
 
   const fetchRecentFeeds = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/feed-log');
+      const response = await fetch(`${API_URL}/api/feed-log`);
       if (!response.ok) throw new Error('Failed to fetch feed logs');
       const data = await response.json();
       setRecentFeeds(data.slice(0, 5));
@@ -106,7 +105,7 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
       console.log('ESP32 response:', feedText);
 
       const now = new Date();
-      const logResponse = await fetch("http://localhost:3000/api/feed-log", {
+      const logResponse = await fetch(`${API_URL}/api/feed-log`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -130,7 +129,7 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
       toast.error(`Failed to feed: ${errorMessage}`);
       try {
         const now = new Date();
-        await fetch("http://localhost:3000/api/feed-log", {
+        await fetch(`${API_URL}/api/feed-log`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

@@ -1,11 +1,13 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
+import { API_URL} from "@/config";
+
 
 interface Schedule {
   _id?: string;
   time: string;
   portion: string;
-  frequency: string;
+  frequency: "daily" | "custom" | "specific";
   status: "Active" | "Paused";
   days?: string[];
   notes?: string;
@@ -19,15 +21,16 @@ interface ScheduleState {
   deleteSchedule: (id: string) => Promise<void>;
 }
 
+
 export const useScheduleStore = create<ScheduleState>((set) => ({
   schedules: [],
   fetchSchedules: async () => {
-    const response = await fetch("http://localhost:3000/api/schedule");
+    const response = await fetch(`${API_URL}/api/schedule`);
     const data = await response.json();
     set({ schedules: data });
   },
   addSchedule: async (schedule) => {
-    const response = await fetch("http://localhost:3000/api/schedule", {
+    const response = await fetch(`${API_URL}/api/schedule`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(schedule),
@@ -37,7 +40,7 @@ export const useScheduleStore = create<ScheduleState>((set) => ({
     toast.success("Schedule added successfully!"); // Added here too
   },
   updateSchedule: async (id, schedule) => {
-    const response = await fetch(`http://localhost:3000/api/schedule/${id}`, {
+    const response = await fetch(`${API_URL}/api/schedule/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(schedule),
@@ -49,7 +52,7 @@ export const useScheduleStore = create<ScheduleState>((set) => ({
     toast.success("Schedule updated successfully!"); // Added here too
   },
   deleteSchedule: async (id) => {
-    await fetch(`http://localhost:3000/api/schedule/${id}`, { method: "DELETE" });
+    await fetch(`${API_URL}/api/schedule/${id}`, { method: "DELETE" });
     set((state) => ({
       schedules: state.schedules.filter((s) => s._id !== id),
     }));

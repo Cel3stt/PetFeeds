@@ -26,8 +26,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import toast from "react-hot-toast";
-
-const ESP32_IP = "192.168.0.100";
+import { API_URL, ESP32_IP } from "@/config";
 
 const daysOfWeek = [
   { id: "mon", label: "Mon" },
@@ -110,7 +109,7 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
 
   const fetchRecentFeeds = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/feed-log");
+      const response = await fetch(`${API_URL}/api/feed-log`);
       if (!response.ok) throw new Error("Failed to fetch feed logs");
       const data: Feed[] = await response.json();
       setRecentFeeds(data.slice(0, 5));
@@ -208,7 +207,7 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
       }
       const text = await response.text();
       console.log(text);
-      await fetch("http://localhost:3000/api/feed-log", {
+      await fetch(`${API_URL}/api/feed-log`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -225,7 +224,7 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
       console.error("Error sending feed command:", error);
       toast.error("Failed to feed. Ensure the ESP32 is connected and on the same network.");
       try {
-        await fetch("http://localhost:3000/api/feed-log", {
+        await fetch(`${API_URL}/api/feed-log`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -388,7 +387,7 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
                   <Label>Sort by:</Label>
-                  <Select value={sortBy} onValueChange={setSortBy}>
+                  <Select value={sortBy} onValueChange={(value) => setSortBy(value as "time" | "frequency")}>
                     <SelectTrigger className="w-[120px]">
                       <SelectValue />
                     </SelectTrigger>
@@ -400,7 +399,7 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Label>Filter:</Label>
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <Select value={filterStatus} onValueChange={(value) => setFilterStatus(value as "all" | "active" | "paused")}>
                     <SelectTrigger className="w-[120px]">
                       <SelectValue />
                     </SelectTrigger>
@@ -557,7 +556,7 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
                   </SelectContent>
                 </Select>
               </div>
-              <Button className="w-full bg-orange-500 hover:bg-orange- visuals600 text-white">Save Preferences</Button>
+              <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">Save Preferences</Button>
             </CardContent>
           </Card>
           <Card>

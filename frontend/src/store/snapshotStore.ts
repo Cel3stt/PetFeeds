@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import toast from "react-hot-toast";
+import { API_URL } from "@/config";
 
 interface Snapshot {
   _id?: string;
@@ -23,7 +24,7 @@ interface SnapshotState {
 export const useSnapshotStore = create<SnapshotState>((set) => ({
   snapshots: [],
   fetchSnapshots: async () => {
-    const response = await fetch("http://localhost:3000/api/snapshot");
+    const response = await fetch(`${API_URL}/api/snapshot`);
     const data = await response.json();
     set({ snapshots: data });
   },
@@ -33,7 +34,7 @@ export const useSnapshotStore = create<SnapshotState>((set) => ({
     formData.append("timestamp", timestamp);
     formData.append("reason", reason);
 
-    const response = await fetch("http://localhost:3000/api/snapshot", {
+    const response = await fetch(`${API_URL}/api/snapshot`, {
       method: "POST",
       body: formData,
     });
@@ -48,7 +49,7 @@ export const useSnapshotStore = create<SnapshotState>((set) => ({
     toast.success("Snapshot added successfully!");
   },
   updateSnapshot: async (id, snapshot) => {
-    const response = await fetch(`http://localhost:3000/api/snapshot/${id}`, {
+    const response = await fetch(`${API_URL}/api/snapshot/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(snapshot),
@@ -62,7 +63,7 @@ export const useSnapshotStore = create<SnapshotState>((set) => ({
     toast.success("Snapshot updated successfully!");
   },
   deleteSnapshot: async (id) => {
-    await fetch(`http://localhost:3000/api/snapshot/${id}`, {
+    await fetch(`${API_URL}/api/snapshot/${id}`, {
       method: "DELETE",
     });
     set((state) => ({

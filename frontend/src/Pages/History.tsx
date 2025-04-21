@@ -33,9 +33,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
 import toast from "react-hot-toast"
 import axios from "axios"
-
-// API base URL - replace with your actual backend URL
-const API_URL = "http://localhost:3000/api"
+import { API_URL } from "@/config"
 
 // Types based on the backend model
 interface FeedLog {
@@ -96,7 +94,7 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
     const fetchFeedLogs = async () => {
       try {
         setLoading(true)
-        const response = await axios.get<FeedLog[]>(`${API_URL}/feed-log`)
+        const response = await axios.get<FeedLog[]>(`${API_URL}/api/feed-log`)
         setFeedLogs(response.data)
         
         // Calculate statistics
@@ -593,4 +591,3 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
     </Layout>
   )
 }
-
