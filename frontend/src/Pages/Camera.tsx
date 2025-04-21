@@ -317,6 +317,82 @@ export default function CameraPage({
     }
   };
 
+  const handleDownloadImage = async () => {
+    if (selectedImage) {
+      try {
+        const imageUrl = `http://localhost:3000${selectedImage.url}`;
+        const response = await fetch(imageUrl, {
+          mode: "cors",
+          headers: {
+            Accept: "image/jpeg",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `snapshot-${selectedImage.timestamp.replace(
+          /[: ]/g,
+          "-"
+        )}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error("Error downloading image:", error);
+        toast.error("Failed to download image.");
+      }
+    }
+  };
+
+  const sendServoCommand = async (endpoint: string, angle: number) => {
+    try {
+      const response = await fetch(
+        `http://${cameraIp}/${endpoint}?angle=${angle}`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to send command");
+      }
+      const text = await response.text();
+      console.log(text);
+    } catch (error) {
+      console.error("Error sending servo command:", error);
+      alert(
+        "Failed to control camera. Ensure the ESP32 is connected and on the same network."
+      );
+    }
+  };
+
+  const handlePanLeft = () => {
+    const newAngle = Math.max(0, panAngle - 5);
+    setPanAngle(newAngle);
+    sendServoCommand("pan", newAngle);
+  };
+
+  const handlePanRight = () => {
+    const newAngle = Math.min(180, panAngle + 5);
+    setPanAngle(newAngle);
+    sendServoCommand("pan", newAngle);
+  };
+
+  const handleTiltUp = () => {
+    const newAngle = Math.min(180, tiltAngle + 5);
+    setTiltAngle(newAngle);
+    sendServoCommand("tilt", newAngle);
+  };
+
+  const handleTiltDown = () => {
+    const newAngle = Math.max(0, tiltAngle - 5);
+    setTiltAngle(newAngle);
+    sendServoCommand("tilt", newAngle);
+  };
+
   return (
     <Layout
       currentPath="/camera"
@@ -439,21 +515,37 @@ export default function CameraPage({
                   <h3 className="text-sm font-medium">Pan & Tilt</h3>
                   <div className="grid grid-cols-3 gap-2 justify-items-center">
                     <div></div>
-                    <Button variant="outline" size="icon">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleTiltUp}
+                    >
                       <ChevronUp className="h-4 w-4" />
                     </Button>
                     <div></div>
 
-                    <Button variant="outline" size="icon">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handlePanLeft}
+                    >
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <div className="w-9 h-9 rounded-full bg-gray-100"></div>
-                    <Button variant="outline" size="icon">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handlePanRight}
+                    >
                       <ChevronRight className="h-4 w-4" />
                     </Button>
 
                     <div></div>
-                    <Button variant="outline" size="icon">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleTiltDown}
+                    >
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                     <div></div>
@@ -504,7 +596,7 @@ export default function CameraPage({
                       className="w-full h-32 object-cover"
                     />
                     <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 truncate">
-                      {new Date(snapshot.timestamp).toLocaleTimeString()}
+                      {new Date(snapshot.timestamp).toLocaleString()}
                     </div>
                   </div>
                 ))}
@@ -619,7 +711,12 @@ export default function CameraPage({
             </div>
           )}
           <DialogFooter className="flex justify-between">
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleDownloadImage}
+            >
               <Download className="h-4 w-4" />
               Download
             </Button>
