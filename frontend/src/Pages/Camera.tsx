@@ -119,10 +119,9 @@ export default function CameraPage({
 }) {
   const [cameraOn, setCameraOn] = useState(true);
   const [resolution, setResolution] = useState("720p"); // Default to 720p
-  const [quality, setQuality] = useState(12); // Default quality
   const [zoomLevel, setZoomLevel] = useState(1);
   const [selectedImage, setSelectedImage] = useState<any>(null);
-  const [cameraIp, setCameraIp] = useState(CAMERA_IP);
+  const cameraIp = CAMERA_IP;
   const [error, setError] = useState<string | null>(null);
   const [panAngle, setPanAngle] = useState(90); // Added for pan/tilt
   const [tiltAngle, setTiltAngle] = useState(90); // Added for pan/tilt
@@ -162,7 +161,7 @@ export default function CameraPage({
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const response = await fetch(`http://${cameraIp}/settings`, {
+        const response = await fetch(`http://${CAMERA_IP}/settings`, {
           headers: {
             Accept: "application/json",
           },
@@ -175,21 +174,13 @@ export default function CameraPage({
         const mappedResolution =
           reverseResolutionMapping[serverResolution] || "720p";
         setResolution(mappedResolution);
-        const serverQuality = parseInt(settings.quality, 10);
-        if (serverQuality >= 4 && serverQuality <= 63) {
-          setQuality(serverQuality);
-        } else {
-          setQuality(12); // Fallback to default if out of range
-        }
-        setError(null);
       } catch (err: any) {
-        setError("Failed to load camera settings. Using default values.");
         console.error(err);
       }
     };
 
     fetchSettings();
-  }, [cameraIp]);
+  }, []);
 
   // Update resolution on the server when the user changes it
   const handleResolutionChange = async (newResolution: string) => {
@@ -212,7 +203,7 @@ export default function CameraPage({
       const result = await response.json();
       console.log(result.status); // "Settings updated"
     } catch (err: any) {
-      setError("Failed to update resolution on the camera.");
+      setError("Failed to update resolution on the camera.",);
       console.error(err);
     }
   };
@@ -298,8 +289,6 @@ export default function CameraPage({
     setSelectedImage(image);
   };
 
-
-
   const handleDeleteImage = () => {
     if (selectedImage) {
       deleteSnapshot(selectedImage._id);
@@ -378,6 +367,12 @@ export default function CameraPage({
     sendServoCommand("tilt", newAngle);
   }
 
+  useEffect(() => {
+    if (cameraOn) {
+      setError(null); // Clear errors when camera is turned on
+    }
+  }, [cameraOn]);
+
   return (
     <Layout
       currentPath="/camera"
@@ -396,12 +391,20 @@ export default function CameraPage({
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
+              {error && (
+                <div className="bg-red-50 p-4 mb-4">
+                  <div className="flex items-center">
+                    <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                </div>
+              )}
               {cameraOn ? (
                 <WebcamFeed
                   onCapture={handleCapture}
-                  streamUrl={streamUrl}
                   snapshotUrl={snapshotUrl}
                   zoomLevel={zoomLevel}
+                  streamUrl={streamUrl}
                   resolution={resolutionMapping[resolution]}
                 />
               ) : (

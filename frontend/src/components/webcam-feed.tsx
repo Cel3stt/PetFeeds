@@ -15,10 +15,8 @@ interface WebcamFeedProps {
 
 export function WebcamFeed({
   onCapture,
-  streamUrl,
   snapshotUrl,
   zoomLevel,
-  resolution,
 }: WebcamFeedProps) {
   const [streamError, setStreamError] = useState<string | null>(null);
   const [imageSrc, setImageSrc] = useState<string>(snapshotUrl);
