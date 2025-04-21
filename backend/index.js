@@ -7,6 +7,8 @@ import scheduleRoutes from './routes/schedule.routes.js';
 import feedLogRoutes from './routes/feedlog.routes.js';
 import Schedule from './models/schedule.model.js';
 import FeedLog from './models/feedlog.model.js';
+import snapshotRoutes from "./routes/snapshot.route.js";
+import path from "path";
 
 dotenv.config();
 const app = express();
@@ -16,8 +18,12 @@ const ESP32_IP = '192.168.0.100'; // Static IP
 app.use(cors());
 app.use(express.json());
 
+//upload path
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+
 // Routes
-app.use('/api/schedule', scheduleRoutes);
+app.use("/api/schedule", scheduleRoutes);
+app.use("/api/snapshot", snapshotRoutes);
 app.use('/api/feed-log', feedLogRoutes);
 
 // Periodic task to check schedules and trigger feeds
