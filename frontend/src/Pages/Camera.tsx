@@ -44,6 +44,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useSnapshotStore } from "@/store/snapshotStore";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 import { API_URL, ESP32_IP, CAMERA_IP } from "@/config";
 
@@ -112,11 +113,8 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
   return file;
 };
 
-export default function CameraPage({
-  navigateTo,
-}: {
-  navigateTo: (path: string) => void;
-}) {
+export default function CameraPage() {
+  const navigate = useNavigate();
   const [cameraOn, setCameraOn] = useState(true);
   const [resolution, setResolution] = useState("720p"); // Default to 720p
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -376,7 +374,7 @@ export default function CameraPage({
   return (
     <Layout
       currentPath="/camera"
-      navigateTo={navigateTo}
+      navigateTo={navigate}
       title="Live Camera Feed"
     >
       <div className="grid gap-6 md:grid-cols-3">

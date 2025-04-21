@@ -34,6 +34,7 @@ import { format } from "date-fns"
 import toast from "react-hot-toast"
 import axios from "axios"
 import { API_URL } from "@/config"
+import { useNavigate } from "react-router-dom"
 
 // Types based on the backend model
 interface FeedLog {
@@ -60,7 +61,8 @@ const objectIdToNumber = (objectId: string): number => {
   return Math.abs(parseInt(lastEightChars, 16));
 };
 
-export default function History({ navigateTo }: { navigateTo: (path: string) => void }) {
+export default function HistoryPage() {
+  const navigate = useNavigate()
   const [filterStatus, setFilterStatus] = useState("all")
   const [filterType, setFilterType] = useState("all")
   const [sortBy, setSortBy] = useState("date")
@@ -180,7 +182,7 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
   }
 
   const handleBackToSchedule = () => {
-    navigateTo("/schedule")
+    navigate("/schedule")
   }
 
   const handleClearFilters = () => {
@@ -194,7 +196,11 @@ export default function History({ navigateTo }: { navigateTo: (path: string) => 
   }
 
   return (
-    <Layout currentPath="/history" navigateTo={navigateTo} title="Feeding History">
+    <Layout
+      currentPath="/history"
+      navigateTo={navigate}
+      title="Feeding History"
+    >
       <div className="grid gap-6">
         {/* Header with back button */}
         <div className="flex items-center">

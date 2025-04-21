@@ -11,6 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Toolti
 import { CircleIcon, Clock, Utensils } from "lucide-react"
 import { toast } from "react-hot-toast"
 import { API_URL, ESP32_IP } from "@/config"
+import { useNavigate } from "react-router-dom"
 
 const monthlyFeedingData = [
   { name: "Jan", grams: 48000 },
@@ -35,16 +36,24 @@ interface Feed {
   status: "Successful" | "Failed";
 }
 
-interface DashboardProps {
-  navigateTo: (path: string) => void
+interface Schedule {
+  _id: string;
+  time: string;
+  portion: string;
+  frequency: "daily" | "custom" | "specific";
+  status: "Active" | "Paused";
+  days?: string[];
 }
 
-export default function Dashboard({ navigateTo }: DashboardProps) {
+export default function Dashboard() {
   const [foodLevel, setFoodLevel] = useState(75)
   const [distance, setDistance] = useState<number | null>(null)
   const [lastUpdate, setLastUpdate] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
   const [recentFeeds, setRecentFeeds] = useState<Feed[]>([])
+  const [nextFeeding, setNextFeeding] = useState<{ time: string; date: string } | null>(null)
+  const [totalDispensedToday, setTotalDispensedToday] = useState<number>(0)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const fetchFoodLevel = async () => {
@@ -87,6 +96,112 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const fetchNextFeeding = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/schedule`);
+        if (!response.ok) throw new Error('Failed to fetch schedules');
+        const schedules: Schedule[] = await response.json();
+        
+        const activeSchedules = schedules.filter(s => s.status === "Active");
+        
+        if (activeSchedules.length === 0) {
+          setNextFeeding(null);
+          return;
+        }
+
+        const now = new Date();
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+
+        let nextTime: Date | null = null;
+        
+        for (const schedule of activeSchedules) {
+          const [hours, minutes] = schedule.time.split(':').map(Number);
+          const scheduleMinutes = hours * 60 + minutes;
+          
+          if (scheduleMinutes > currentTime) {
+            const scheduleDate = new Date();
+            scheduleDate.setHours(hours, minutes, 0, 0);
+            
+            if (!nextTime || scheduleDate < nextTime) {
+              nextTime = scheduleDate;
+            }
+          }
+        }
+
+        if (!nextTime && activeSchedules.length > 0) {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const [hours, minutes] = activeSchedules[0].time.split(':').map(Number);
+          tomorrow.setHours(hours, minutes, 0, 0);
+          nextTime = tomorrow;
+        }
+
+        if (nextTime) {
+          setNextFeeding({
+            time: nextTime.toLocaleTimeString('en-US', { 
+              hour: 'numeric', 
+              minute: '2-digit',
+              hour12: true 
+            }),
+            date: nextTime.toLocaleDateString('en-US', { 
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric'
+            })
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch next feeding time:', error);
+      }
+    };
+
+    fetchNextFeeding();
+    const interval = setInterval(fetchNextFeeding, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const calculateTotalDispensedToday = async () => {
+      try {
+        const today = new Date();
+        const todayString = today.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).split('/').reverse().join('-');
+
+        console.log('Today\'s date:', todayString);
+
+        const response = await fetch(`${API_URL}/api/feed-log`);
+        if (!response.ok) throw new Error('Failed to fetch feed logs');
+        const feeds: Feed[] = await response.json();
+        
+        console.log('All feeds:', feeds);
+        
+        const todayFeeds = feeds.filter(feed => {
+          console.log('Comparing feed date:', feed.date, 'with today:', todayString);
+          return feed.date === todayString && feed.status === "Successful";
+        });
+
+        console.log('Today\'s feeds:', todayFeeds);
+        
+        const total = todayFeeds.reduce((sum, feed) => {
+          const grams = parseInt(feed.portion.replace('g', ''));
+          return sum + (isNaN(grams) ? 0 : grams);
+        }, 0);
+        
+        setTotalDispensedToday(total);
+      } catch (error) {
+        console.error('Failed to calculate total dispensed:', error);
+      }
+    };
+
+    calculateTotalDispensedToday();
+    const interval = setInterval(calculateTotalDispensedToday, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const handleFeedNow = async () => {
     const STANDARD_PORTION = 50;
     try {
@@ -105,12 +220,22 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
       console.log('ESP32 response:', feedText);
 
       const now = new Date();
+      const formattedDate = now.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).split('/').reverse().join('-');
+
       const logResponse = await fetch(`${API_URL}/api/feed-log`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          date: now.toISOString().split('T')[0],
-          time: now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+          date: formattedDate,
+          time: now.toLocaleTimeString('en-US', { 
+            hour12: false, 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          }),
           portion: `${STANDARD_PORTION}g`,
           method: "Manual",
           status: "Successful"
@@ -129,12 +254,22 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
       toast.error(`Failed to feed: ${errorMessage}`);
       try {
         const now = new Date();
+        const formattedDate = now.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit'
+        }).split('/').reverse().join('-');
+
         await fetch(`${API_URL}/api/feed-log`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            date: now.toISOString().split('T')[0],
-            time: now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+            date: formattedDate,
+            time: now.toLocaleTimeString('en-US', { 
+              hour12: false, 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            }),
             portion: `${STANDARD_PORTION}g`,
             method: "Manual",
             status: "Failed"
@@ -147,7 +282,11 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
   };
 
   return (
-    <Layout currentPath="/" navigateTo={navigateTo} title="Dashboard">
+    <Layout
+      currentPath="/"
+      navigateTo={navigate}
+      title="Dashboard"
+    >
       <div className="flex items-end justify-end gap-4 mb-2">
         <Button className="bg-orange-500 hover:bg-orange-600 text-white" onClick={handleFeedNow}>
           Feed now
@@ -188,14 +327,14 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
         <StatusCard
           icon={<Clock className="h-5 w-5" />}
           title="Next Scheduled Feeding"
-          value="6:00 PM"
-          subtitle="Today"
+          value={nextFeeding ? nextFeeding.time : "No scheduled feeds"}
+          subtitle={nextFeeding ? nextFeeding.date : "Add a schedule to see next feeding"}
         />
         <StatusCard
           icon={<Utensils className="h-5 w-5" />}
           title="Total food dispensed today"
-          value="300g"
-          subtitle="Today"
+          value={`${totalDispensedToday}g`}
+          subtitle={`As of ${new Date().toLocaleTimeString()}`}
         />
       </div>
       <div className="grid gap-6 md:grid-cols-3">
@@ -258,7 +397,7 @@ export default function Dashboard({ navigateTo }: DashboardProps) {
             </div>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" size="sm" className="w-full" onClick={() => navigateTo("/history")}>
+            <Button variant="outline" size="sm" className="w-full" onClick={() => navigate("/history")}>
               View All Activity
             </Button>
           </CardFooter>

@@ -27,6 +27,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import toast from "react-hot-toast";
 import { API_URL } from "@/config";
+import { useNavigate } from "react-router-dom";
 
 const daysOfWeek = [
   { id: "mon", label: "Mon" },
@@ -69,11 +70,8 @@ const scheduleSchema = z.object({
 
 type ScheduleFormData = z.infer<typeof scheduleSchema>;
 
-interface ScheduleProps {
-  navigateTo: (path: string) => void;
-}
-
-export default function Schedule({ navigateTo }: ScheduleProps) {
+export default function Schedule() {
+  const navigate = useNavigate();
   const { schedules, fetchSchedules, addSchedule, updateSchedule, deleteSchedule } = useScheduleStore();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -198,11 +196,10 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
   const handleEditDayChange = (day: string, checked: boolean) =>
     setEditDays((prev) => (checked ? [...prev, day] : prev.filter((d) => d !== day)));
 
-
   return (
     <Layout
       currentPath="/schedule"
-      navigateTo={navigateTo}
+      navigateTo={navigate}
       title="Feed Schedule"
     >
       <div className="grid gap-6 md:grid-cols-3">
@@ -463,7 +460,7 @@ export default function Schedule({ navigateTo }: ScheduleProps) {
               )}
             </CardContent>
             <CardFooter>
-              <Button variant="outline" size="sm" className="ml-auto" onClick={() => navigateTo("/history")}>
+              <Button variant="outline" size="sm" className="ml-auto" onClick={() => navigate("/history")}>
                 View All History
               </Button>
             </CardFooter>
