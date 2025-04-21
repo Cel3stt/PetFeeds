@@ -547,20 +547,6 @@ export default function CameraPage({
                   </div>
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                {/* Rotate Camera */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-medium">Rotate Camera</h3>
-                    <p className="text-xs text-gray-500">Switch camera view</p>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    <RotateCw className="h-4 w-4 mr-2" />
-                    Rotate
-                  </Button>
-                </div>
-              </div>
             </CardContent>
           </Card>
 
@@ -658,11 +644,6 @@ export default function CameraPage({
                 </div>
               </div>
             </CardContent>
-            <CardFooter>
-              <Button variant="link" className="text-orange-500">
-                Visit our help center for more support
-              </Button>
-            </CardFooter>
           </Card>
         </div>
       </div>
