@@ -13,20 +13,6 @@ import { toast } from "react-hot-toast"
 import { API_URL, ESP32_IP } from "@/config"
 import { useNavigate } from "react-router-dom"
 
-const monthlyFeedingData = [
-  { name: "Jan", grams: 48000 },
-  { name: "Feb", grams: 17000 },
-  { name: "Mar", grams: 37000 },
-  { name: "Apr", grams: 50000 },
-  { name: "June", grams: 37000 },
-  { name: "July", grams: 11000 },
-  { name: "Aug", grams: 37000 },
-  { name: "Sep", grams: 43000 },
-  { name: "Oct", grams: 45000 },
-  { name: "Nov", grams: 7000 },
-  { name: "Dec", grams: 37000 },
-]
-
 interface Feed {
   _id: string;
   date: string;
@@ -45,6 +31,11 @@ interface Schedule {
   days?: string[];
 }
 
+interface MonthlyData {
+  name: string;
+  grams: number;
+}
+
 export default function Dashboard() {
   const [foodLevel, setFoodLevel] = useState(75)
   const [distance, setDistance] = useState<number | null>(null)
@@ -53,6 +44,7 @@ export default function Dashboard() {
   const [recentFeeds, setRecentFeeds] = useState<Feed[]>([])
   const [nextFeeding, setNextFeeding] = useState<{ time: string; date: string } | null>(null)
   const [totalDispensedToday, setTotalDispensedToday] = useState<number>(0)
+  const [monthlyFeedingData, setMonthlyFeedingData] = useState<MonthlyData[]>([])
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -202,6 +194,54 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const calculateMonthlyData = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/feed-log`);
+        if (!response.ok) throw new Error('Failed to fetch feed logs');
+        const feeds: Feed[] = await response.json();
+
+        // Get all successful feeds
+        const successfulFeeds = feeds.filter(feed => feed.status === "Successful");
+
+        // Create a map to store monthly totals
+        const monthlyTotals = new Map<string, number>();
+
+        // Initialize all months with 0
+        const months = [
+          "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        ];
+        months.forEach(month => monthlyTotals.set(month, 0));
+
+        // Calculate totals for each month
+        successfulFeeds.forEach(feed => {
+          const date = new Date(feed.date);
+          const month = months[date.getMonth()];
+          const grams = parseInt(feed.portion.replace('g', ''));
+          if (!isNaN(grams)) {
+            monthlyTotals.set(month, (monthlyTotals.get(month) || 0) + grams);
+          }
+        });
+
+        // Convert to array format for the chart
+        const monthlyData = months.map(month => ({
+          name: month,
+          grams: monthlyTotals.get(month) || 0
+        }));
+
+        setMonthlyFeedingData(monthlyData);
+      } catch (error) {
+        console.error('Failed to calculate monthly data:', error);
+        toast.error('Failed to load monthly feeding data');
+      }
+    };
+
+    calculateMonthlyData();
+    const interval = setInterval(calculateMonthlyData, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
+
   const handleFeedNow = async () => {
     const STANDARD_PORTION = 50;
     try {
@@ -341,6 +381,7 @@ export default function Dashboard() {
         <Card className="md:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-xl font-bold">Monthly Feeding Report</CardTitle>
+            <CardDescription>Total food dispensed per month (in grams)</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
